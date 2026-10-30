@@ -5,7 +5,9 @@ import * as authController from "./auth.controller";
 import {
   emailSchema,
   googleLoginSchema,
+  invitationParamsSchema,
   loginSchema,
+  registerDeveloperSchema,
   registerSchema,
   resetPasswordSchema,
   tokenSchema,
@@ -21,5 +23,9 @@ router.post("/resend-confirmation", validate({ body: emailSchema }), authControl
 router.post("/forgot-password", validate({ body: emailSchema }), authController.forgotPassword);
 router.post("/reset-password", validate({ body: resetPasswordSchema }), authController.resetPassword);
 router.get("/me", requireAuth, authController.getMe);
+
+// Developer invitations (the link in the invitation email)
+router.get("/invitations/:token", validate({ params: invitationParamsSchema }), authController.getInvitation);
+router.post("/register-developer", validate({ body: registerDeveloperSchema }), authController.registerDeveloper);
 
 export default router;

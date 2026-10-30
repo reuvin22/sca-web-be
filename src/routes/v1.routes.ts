@@ -9,7 +9,9 @@ import profileRoutes from "../modules/profile/profile.routes";
 import reportRoutes from "../modules/report/report.routes";
 import studentRoutes from "../modules/student/student.routes";
 import supportRoutes from "../modules/support/support.routes";
+import teamRoutes from "../modules/team/team.routes";
 import todoRoutes from "../modules/todo/todo.routes";
+import updateRoutes from "../modules/update/update.routes";
 
 // All version 1 endpoints. Mounted at /api/v1 in app.ts.
 const router = Router();
@@ -26,7 +28,9 @@ router.use("/appointments", appointmentRoutes);
 router.use("/categories", categoryRoutes);
 router.use("/todo", todoRoutes);
 router.use("/files", fileRoutes);
-router.use("/support", supportRoutes);
+router.use("/support", supportRoutes); // sending: everyone; board: developers
 router.use("/reports", reportRoutes);
+router.use("/team", teamRoutes); // developers only
+router.use("/updates", updateRoutes); // reading: everyone; publishing: developers
 
 export default router;

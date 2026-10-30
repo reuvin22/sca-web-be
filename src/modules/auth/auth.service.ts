@@ -3,15 +3,18 @@ import { ApiError } from "../../utils/apiError";
 import { nowIso } from "../../utils/date";
 import { userCollection, usersCollection } from "../../utils/firestore";
 import { signAccessToken } from "../../utils/jwt";
+import { DEFAULT_ACCESS_ROLE, type AccessRole } from "../../utils/roles";
 import { comparePassword, hashPassword } from "../../utils/password";
 import { DEFAULT_CATEGORIES } from "../category/category.defaults";
 import { EMPTY_SCHOOL } from "../profile/profile.service";
 import * as profileService from "../profile/profile.service";
 import type { UserDoc } from "../profile/profile.types";
-import { consumeToken, sendTokenEmail } from "./auth.token.service";
-import type { GoogleLoginInput, LoginInput, RegisterInput, ResetPasswordInput } from "./auth.types";
+import { consumeInvitation, consumeToken, peekInvitation, sendTokenEmail } from "./auth.token.service";
+import type { GoogleLoginInput, LoginInput, RegisterDeveloperInput, RegisterInput, ResetPasswordInput } from "./auth.types";
 
-type NewAccount = Pick<UserDoc, "name" | "email" | "password" | "firebaseUid" | "emailVerifiedAt">;
+type NewAccount = Pick<UserDoc, "name" | "email" | "password" | "firebaseUid" | "emailVerifiedAt"> & {
+  accessRole?: AccessRole; // defaults to sca-1; invited developers get "dev"
+};
 
 async function findUserByEmail(email: string) {
   const snapshot = await usersCollection.where("email", "==", email).limit(1).get();
@@ -21,7 +24,7 @@ async function findUserByEmail(email: string) {
 
 // Creates the user with an empty school profile and the default Settings categories.
 // Runs in a transaction so two sign-ups with the same email can't both succeed.
-async function createAccount(account: NewAccount) {
+export async function createAccount(account: NewAccount) {
   const userRef = usersCollection.doc();
 
   await db.runTransaction(async (transaction) => {
@@ -30,7 +33,8 @@ async function createAccount(account: NewAccount) {
 
     const user: UserDoc = {
       ...account,
-      role: "School Counselor Associate",
+      accessRole: account.accessRole ?? DEFAULT_ACCESS_ROLE,
+      role: account.accessRole === "dev" ? "Developer" : "School Counselor Associate",
       phone: null,
       school: EMPTY_SCHOOL,
       createdAt: nowIso(),
@@ -144,4 +148,25 @@ export async function resetPassword({ token, password }: ResetPasswordInput) {
 
   // Opening the emailed link also proves the user owns the email.
   await ref.update({ password: await hashPassword(password), emailVerifiedAt: user.emailVerifiedAt ?? nowIso() });
+}
+
+// Shows the invited email on the developer registration page
+export function getInvitation(token: string) {
+  return peekInvitation(token);
+}
+
+// Creates a developer account from an invitation. The invitation proves the email, so it is verified.
+// The invitation is used up only after the account exists, so a failed sign-up can be retried.
+export async function registerDeveloper({ token, fullName, password }: RegisterDeveloperInput) {
+  const { email } = await peekInvitation(token);
+  const user = await createAccount({
+    name: fullName,
+    email,
+    password: await hashPassword(password),
+    firebaseUid: null,
+    emailVerifiedAt: nowIso(),
+    accessRole: "dev",
+  });
+  await consumeInvitation(token);
+  return buildSession(user.id);
 }

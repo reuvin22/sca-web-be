@@ -177,3 +177,23 @@ export function resetPasswordEmail(name: string, email: string, link: string): E
     text: `Hi ${name}!\n\nForgot your password? Click the link below to choose a new one for ${email}.\n\nReset your password: ${link}\n\n${footnote}`,
   };
 }
+
+// Developer team invitation. `inviterName` is the developer who sent it.
+export function invitationEmail(inviterName: string, email: string, link: string): EmailContent {
+  const footnote = "This invitation expires in 72 hours. If you weren't expecting it, you can ignore this email.";
+
+  return {
+    subject: "You're invited to the SCA developer team 🚀",
+    html: emailLayout({
+      preheader: `${inviterName} invited you to join the SCA developer team.`,
+      badge: "🛠️",
+      title: "You're invited! 🎉",
+      message: `<strong>${escapeHtml(inviterName)}</strong> invited <strong style="color:#7c3aed;">${escapeHtml(email)}</strong> to join the SCA developer team. Create your developer account to start handling bug reports and feature requests.`,
+      buttonLabel: "Create my developer account",
+      link,
+      note: "🔒 This link only works for the invited email address.",
+      footnote,
+    }),
+    text: `${inviterName} invited ${email} to join the SCA developer team.\n\nCreate your developer account: ${link}\n\n${footnote}`,
+  };
+}

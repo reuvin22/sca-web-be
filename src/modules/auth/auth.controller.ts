@@ -6,6 +6,8 @@ import * as authService from "./auth.service";
 import type {
   EmailInput,
   GoogleLoginInput,
+  InvitationParams,
+  RegisterDeveloperInput,
   LoginInput,
   RegisterInput,
   ResetPasswordInput,
@@ -43,4 +45,12 @@ export async function resetPassword(req: Request<object, unknown, ResetPasswordI
 
 export async function getMe(req: Request, res: Response) {
   sendSuccess(res, await profileService.getProfile(getUserId(req)));
+}
+
+export async function getInvitation(req: Request<InvitationParams>, res: Response) {
+  sendSuccess(res, await authService.getInvitation(req.params.token));
+}
+
+export async function registerDeveloper(req: Request<object, unknown, RegisterDeveloperInput>, res: Response) {
+  sendSuccess(res, await authService.registerDeveloper(req.body), 201);
 }

@@ -16,6 +16,9 @@ A list of every field that is encrypted or hashed. Check it to confirm the right
 | `users/{id}/appointments/{id}` | notes | Encrypt | AES-256-GCM | Confidential appointment notes | 2026-10-30 |
 | R2 object (`files/{id}.storageKey`) | file content | Encrypt | AES-256-GCM (binary) | Uploaded documents may contain student records | 2026-10-30 |
 | R2 object (`users/{id}.photo.storageKey`) | profile photo | Encrypt | AES-256-GCM (binary) | Personal photo | 2026-10-30 |
+| R2 objects (`supportRequests/{id}.attachments[].storageKey`) | bug report images/videos | Encrypt | AES-256-GCM (binary) | Screenshots may show student records | 2026-10-30 |
+| R2 objects (`updates/{id}.media[].storageKey`) | system update images/videos | Encrypt | AES-256-GCM (binary) | Screenshots may show student records | 2026-10-30 |
+| `authTokens/{id}` (DEV_INVITE) | document id | Hash | SHA-256 | Developer invitation link token | 2026-10-30 |
 
 ## Fields to Review
 
@@ -26,6 +29,8 @@ Fields that might need encryption but are not protected yet.
 - **students.studentName, appointments.studentName**: **plain text** because the lists search by name in Firestore. (Case learner names are encrypted; case search runs after decrypting.)
 - **students filter fields** (sex, gradeSection, schoolYear, livesWith, feelingAboutSchool, prefersPrivate, signatureReceived, followUpNeeded): **plain text** because the Students page filters by them in Firestore.
 - **files.name**: **plain text**. File names can include student names.
+- **supportRequests subject / description / reporter**: **plain text** so developers can read them on the board. Users should not put student details in support messages.
+- **updates.contentHtml**: **plain text** (sanitized HTML). It is shown to every user.
 
 ## Notes
 

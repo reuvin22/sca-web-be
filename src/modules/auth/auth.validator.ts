@@ -26,3 +26,13 @@ export const tokenSchema = z.object({
 });
 
 export const resetPasswordSchema = tokenSchema.extend({ password });
+
+// Developer invitation link: /dev-register?token=...
+export const invitationParamsSchema = z.object({
+  token: z.string().regex(/^[0-9a-f]{64}$/, "Invalid invitation"),
+});
+
+export const registerDeveloperSchema = tokenSchema.extend({
+  fullName: z.string().trim().min(2).max(100),
+  password,
+});

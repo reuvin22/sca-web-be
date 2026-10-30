@@ -1,4 +1,5 @@
 import { getExtension } from "../../middlewares/upload.middleware";
+import { roleOf } from "../../utils/roles";
 import { ApiError } from "../../utils/apiError";
 import { nowIso } from "../../utils/date";
 import { decryptOptional, encryptOptional } from "../../utils/encryption";
@@ -30,6 +31,7 @@ function toProfile(id: string, user: UserDoc) {
       role: user.role,
       phone: decryptOptional(user.phone),
       photoUpdatedAt: user.photo?.updatedAt ?? null,
+      accessRole: roleOf(user),
     },
     school: { ...EMPTY_SCHOOL, ...user.school },
   };
