@@ -46,19 +46,18 @@ function toFeature(feature: FeatureDoc, userId: string, ranks: Map<string, numbe
   };
 }
 
-// "all" = everything except rejected; "done" = in the Done column; otherwise the review status
-function matchesStatus(feature: FeatureDoc, status: FeatureQuery["status"]) {
-  if (status === "all") return reviewOf(feature) !== "rejected";
-  if (status === "done") return feature.status === "done";
-  return reviewOf(feature) === status;
+// Review filter ("all" = everything except rejected), then optionally the board column
+function matchesFilters(feature: FeatureDoc, { status, progress }: Pick<FeatureQuery, "status" | "progress">) {
+  const reviewMatches = status === "all" ? reviewOf(feature) !== "rejected" : reviewOf(feature) === status;
+  return reviewMatches && (!progress || feature.status === progress);
 }
 
-// Requests with one status filter, most votes first, with search
-export async function listFeatures(userId: string, { status, search, page, limit }: FeatureQuery) {
+// Requests matching the filters, most votes first, with search
+export async function listFeatures(userId: string, { status, progress, search, page, limit }: FeatureQuery) {
   const features = await loadFeatures();
   const ranks = rankApproved(features);
   const matching = features
-    .filter((feature) => matchesStatus(feature, status))
+    .filter((feature) => matchesFilters(feature, { status, progress }))
     .filter((feature) => includesText(`${feature.subject} ${feature.description}`, search))
     .sort(byVotes);
   const { items, pagination } = paginateArray(matching, { page, limit });

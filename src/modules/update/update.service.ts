@@ -1,6 +1,7 @@
 import type { DocumentSnapshot } from "firebase-admin/firestore";
 import { FieldValue } from "firebase-admin/firestore";
 import { db } from "../../config/firebase";
+import { broadcast } from "../../utils/realtime";
 import { ApiError } from "../../utils/apiError";
 import { readAttachment, saveAttachments, toPublicAttachments } from "../../utils/attachments";
 import { nowIso } from "../../utils/date";
@@ -46,6 +47,11 @@ export async function publishUpdate(authorId: string, input: CreateUpdateInput, 
   };
   await ref.set(update);
   await supportService.markImplemented(input.reportId, ref.id);
+
+  // Real time: every other signed-in user gets the notification right away
+  const notification = { id: ref.id, title: update.title, reportType: update.reportType, publishedAt: update.publishedAt, read: false };
+  broadcast("system-update", notification, { exceptUserId: authorId });
+
   return toUpdate(await ref.get());
 }
 

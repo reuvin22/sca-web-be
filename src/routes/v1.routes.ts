@@ -6,6 +6,7 @@ import caseRoutes from "../modules/case/case.routes";
 import categoryRoutes from "../modules/category/category.routes";
 import featureRoutes from "../modules/feature/feature.routes";
 import fileRoutes from "../modules/file/file.routes";
+import notificationRoutes from "../modules/notification/notification.routes";
 import profileRoutes from "../modules/profile/profile.routes";
 import reportRoutes from "../modules/report/report.routes";
 import studentRoutes from "../modules/student/student.routes";
@@ -34,5 +35,6 @@ router.use("/features", featureRoutes); // feature requests list + voting: every
 router.use("/reports", reportRoutes);
 router.use("/team", teamRoutes); // developers only
 router.use("/updates", updateRoutes); // reading: everyone; publishing: developers
+router.use("/notifications", notificationRoutes); // real-time stream (Server-Sent Events)
 
 export default router;
