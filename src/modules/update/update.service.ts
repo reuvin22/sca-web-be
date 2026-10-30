@@ -86,7 +86,9 @@ export async function getUpdateNotifications(userId: string) {
     updatesCollection.orderBy("publishedAt", "desc").limit(MAX_PAGE_SIZE + 5).get(),
     usersCollection.doc(userId).get(),
   ]);
-  const readIds = (userDoc.data() as UserDoc | undefined)?.readUpdateIds ?? [];
+  // Read by opening the update page, or by clicking it / "Mark all as read" in the bell
+  const user = userDoc.data() as UserDoc | undefined;
+  const readIds = [...(user?.readUpdateIds ?? []), ...(user?.readNotificationIds ?? []).map((id) => id.replace(/^update-/, ""))];
 
   return snapshot.docs
     .map((doc) => ({ id: doc.id, ...(doc.data() as UpdateDoc) }))

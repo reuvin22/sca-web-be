@@ -5,6 +5,7 @@ import { getCaseStatus } from "../case/case.status";
 import { decryptCase } from "../case/case.crypto";
 import type { CaseDoc, CaseInput, LegacyCaseDoc } from "../case/case.types";
 import type { AppointmentDoc } from "../appointment/appointment.types";
+import * as notificationService from "../notification/notification.service";
 import * as updateService from "../update/update.service";
 import { countBy, countByMonth, workloadByStaff } from "./report.helpers";
 
@@ -99,12 +100,14 @@ export async function getSummary(userId: string) {
 }
 
 // Overdue and due-today follow-ups, scheduled appointments today or tomorrow,
-// and system updates published by developers
+// and system updates published by developers. `readIds`: notifications this user already read
+// (ids like "overdue-<caseId>"), so the bell can hide them.
 export async function getNotifications(userId: string) {
-  const [cases, appointments, systemUpdates] = await Promise.all([
+  const [cases, appointments, systemUpdates, readIds] = await Promise.all([
     loadCases(userId),
     loadAppointments(userId),
     updateService.getUpdateNotifications(userId),
+    notificationService.getReadIds(userId),
   ]);
   const today = todayString();
   const tomorrow = todayString(1);
@@ -124,5 +127,6 @@ export async function getNotifications(userId: string) {
       .sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`))
       .slice(0, MAX_PAGE_SIZE),
     systemUpdates,
+    readIds,
   };
 }

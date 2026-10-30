@@ -14,6 +14,7 @@ export interface UserDoc {
   role: string; // job title shown on the profile (free text)
   accessRole?: AccessRole; // RBAC role; missing on older accounts = sca-1 (see utils/roles)
   readUpdateIds?: string[]; // system updates this user has opened (notifications)
+  readNotificationIds?: string[]; // bell notifications marked read, e.g. "overdue-<caseId>" (newest 300 kept)
   phone: string | null; // AES-256-GCM encrypted
   emailVerifiedAt: string | null;
   school: School;
