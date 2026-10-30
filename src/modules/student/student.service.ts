@@ -7,7 +7,7 @@ import {
   includesText,
   paginate,
   userCollection,
-  whereDateRange,
+  inDateRange,
   whereEquals,
 } from "../../utils/firestore";
 import { generateRecordId } from "../../utils/token";
@@ -53,14 +53,17 @@ function toStudentFields(input: StudentInput) {
   };
 }
 
-// Newest first. Dropdown filters and dates run in Firestore; name search runs after (see paginate).
+// Newest added first. Dropdown filters run in Firestore; name search and dates run after (see paginate).
 export async function listStudents(userId: string, query: StudentQuery) {
   const { page, limit, search, from, to, ...filters } = query;
-  let firestoreQuery = whereEquals(students(userId), filters);
-  firestoreQuery = whereDateRange(firestoreQuery, "dateEncoded", from, to).orderBy("dateEncoded", "desc");
+  const firestoreQuery = whereEquals(students(userId), filters).orderBy("createdAt", "desc");
 
-  const nameMatches = search ? (item: { studentName: string }) => includesText(item.studentName, search) : undefined;
-  const { items, pagination } = await paginate(firestoreQuery, { page, limit }, toStudent, nameMatches);
+  const matches =
+    search || from
+      ? (item: { studentName: string; dateEncoded: string }) =>
+          includesText(item.studentName, search) && inDateRange(item.dateEncoded, from, to)
+      : undefined;
+  const { items, pagination } = await paginate(firestoreQuery, { page, limit }, toStudent, matches);
   return { students: items, pagination };
 }
 

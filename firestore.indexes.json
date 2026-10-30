@@ -9,7 +9,7 @@
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "dateEncoded",
+          "fieldPath": "createdAt",
           "order": "DESCENDING"
         }
       ]
@@ -23,7 +23,7 @@
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "dateEncoded",
+          "fieldPath": "createdAt",
           "order": "DESCENDING"
         }
       ]
@@ -37,7 +37,7 @@
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "dateEncoded",
+          "fieldPath": "createdAt",
           "order": "DESCENDING"
         }
       ]
@@ -51,7 +51,7 @@
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "dateEncoded",
+          "fieldPath": "createdAt",
           "order": "DESCENDING"
         }
       ]
@@ -65,7 +65,7 @@
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "dateEncoded",
+          "fieldPath": "createdAt",
           "order": "DESCENDING"
         }
       ]
@@ -79,7 +79,7 @@
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "dateEncoded",
+          "fieldPath": "createdAt",
           "order": "DESCENDING"
         }
       ]
@@ -93,7 +93,7 @@
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "dateEncoded",
+          "fieldPath": "createdAt",
           "order": "DESCENDING"
         }
       ]
@@ -107,7 +107,7 @@
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "dateEncoded",
+          "fieldPath": "createdAt",
           "order": "DESCENDING"
         }
       ]
@@ -121,8 +121,8 @@
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "dateTime",
-          "order": "ASCENDING"
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
         }
       ]
     },
@@ -135,8 +135,8 @@
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "dateTime",
-          "order": "ASCENDING"
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
         }
       ]
     },
@@ -153,8 +153,8 @@
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "dateTime",
-          "order": "ASCENDING"
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
         }
       ]
     },

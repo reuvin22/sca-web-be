@@ -32,15 +32,16 @@ export function whereEquals(query: Query, filters: Record<string, string | undef
   return Object.entries(filters).reduce((result, [field, value]) => (value ? result.where(field, "==", value) : result), query);
 }
 
-// "YYYY-MM-DD" range on a field. Only `from` means that single day.
-export function whereDateRange(query: Query, field: string, from: string, to: string) {
-  if (!from) return query;
-  return query.where(field, ">=", from).where(field, "<=", to || from);
-}
+// Lists show the newest records first (sorted by createdAt). Firestore can't also filter a range on
+// another field, so these filters run here after the query (see paginate).
 
-// Firestore cannot search inside text, so name search is done here after the query.
+// Case-insensitive text search
 export const includesText = (value: string, search: string) =>
   !search || value.toLowerCase().includes(search.toLowerCase());
+
+// "YYYY-MM-DD" range check. Only `from` means that single day; no `from` means no filter.
+export const inDateRange = (value: string, from: string, to: string) =>
+  !from || (value >= from && value <= (to || from));
 
 // Paginates a Firestore query (max 15 per page).
 // - Without `keep`: Firestore does the paging (offset/limit) and the count.

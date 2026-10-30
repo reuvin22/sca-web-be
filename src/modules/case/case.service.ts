@@ -2,7 +2,7 @@ import type { DocumentSnapshot } from "firebase-admin/firestore";
 import { recordAudit } from "../../utils/audit";
 import { nowIso } from "../../utils/date";
 import { decryptOptional, encryptOptional } from "../../utils/encryption";
-import { dataOrNotFound, includesText, paginate, userCollection, whereDateRange } from "../../utils/firestore";
+import { dataOrNotFound, inDateRange, includesText, paginate, userCollection } from "../../utils/firestore";
 import { generateCaseNumber } from "../../utils/token";
 import { getCaseStatus } from "./case.status";
 import type { CaseDoc, CaseInput, CaseQuery } from "./case.types";
@@ -18,15 +18,17 @@ function toCaseFields(input: CaseInput) {
   return { ...input, remarks: encryptOptional(input.remarks), updatedAt: nowIso() };
 }
 
-// Newest intake first. The date range runs in Firestore; name search and status run after (see paginate),
+// Newest added first. Name search, intake dates and status run after the query (see paginate),
 // because the status can depend on today's date.
 export async function listCases(userId: string, { page, limit, search, from, to, status }: CaseQuery) {
-  const firestoreQuery = whereDateRange(cases(userId), "intakeDate", from, to).orderBy("intakeDate", "desc");
+  const firestoreQuery = cases(userId).orderBy("createdAt", "desc");
 
   const matches =
-    search || status
+    search || from || status
       ? (item: ReturnType<typeof toCase>) =>
-          includesText(item.learnerName, search) && (!status || getCaseStatus(item) === status)
+          includesText(item.learnerName, search) &&
+          inDateRange(item.intakeDate, from, to) &&
+          (!status || getCaseStatus(item) === status)
       : undefined;
 
   const { items, pagination } = await paginate(firestoreQuery, { page, limit }, toCase, matches);

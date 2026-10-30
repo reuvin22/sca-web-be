@@ -17,6 +17,10 @@ export async function createCategory(req: Request<object, unknown, CreateCategor
   sendSuccess(res, await categoryService.createCategory(getUserId(req), req.body), 201);
 }
 
+export async function renameCategory(req: Request<IdParams, unknown, CreateCategoryInput>, res: Response) {
+  sendSuccess(res, await categoryService.renameCategory(getUserId(req), req.params.id, req.body));
+}
+
 export async function updateOptions(req: Request<IdParams, unknown, UpdateOptionsInput>, res: Response) {
   sendSuccess(res, await categoryService.updateOptions(getUserId(req), req.params.id, req.body));
 }

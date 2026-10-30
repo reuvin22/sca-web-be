@@ -39,8 +39,8 @@ async function createAccount(account: NewAccount) {
 
     const categories = userCollection(userRef.id, "categories");
     DEFAULT_CATEGORIES.forEach((category, index) => {
-      // createdAt keeps the default order (one millisecond apart)
-      const createdAt = new Date(Date.now() + index).toISOString();
+      // Lists show newest first, so earlier defaults get later times to keep the default order
+      const createdAt = new Date(Date.now() - index).toISOString();
       transaction.create(categories.doc(), { ...category, createdAt });
     });
   });

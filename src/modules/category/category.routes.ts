@@ -16,6 +16,8 @@ router.get(
   categoryController.listCategories,
 );
 router.post("/", validate({ body: createCategorySchema }), categoryController.createCategory);
+// Rename: { name }
+router.patch("/:id", validate({ params: idParamsSchema, body: createCategorySchema }), categoryController.renameCategory);
 router.patch(
   "/:id/options",
   validate({ params: idParamsSchema, body: updateOptionsSchema }),

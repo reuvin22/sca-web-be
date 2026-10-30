@@ -2,39 +2,32 @@ import type { DocumentSnapshot } from "firebase-admin/firestore";
 import { recordAudit } from "../../utils/audit";
 import { nowIso } from "../../utils/date";
 import { decryptOptional, encryptOptional } from "../../utils/encryption";
-import { dataOrNotFound, includesText, paginate, userCollection, whereEquals } from "../../utils/firestore";
+import { dataOrNotFound, inDateRange, includesText, paginate, userCollection, whereEquals } from "../../utils/firestore";
 import { generateAppointmentId } from "../../utils/token";
 import type { AppointmentDoc, AppointmentInput, AppointmentQuery } from "./appointment.types";
 
 const appointments = (userId: string) => userCollection(userId, "appointments");
 
 function toAppointment(doc: DocumentSnapshot) {
-  const { createdAt: _c, updatedAt: _u, dateTime: _d, notes, ...fields } = doc.data() as AppointmentDoc;
+  const { createdAt: _c, updatedAt: _u, notes, ...fields } = doc.data() as AppointmentDoc;
   return { id: doc.id, ...fields, notes: decryptOptional(notes) };
 }
 
 function toAppointmentFields(input: AppointmentInput) {
-  return {
-    ...input,
-    dateTime: `${input.date} ${input.time}`,
-    notes: encryptOptional(input.notes),
-    updatedAt: nowIso(),
-  };
+  return { ...input, notes: encryptOptional(input.notes), updatedAt: nowIso() };
 }
 
-// Earliest first, like the frontend's appointment list.
-// Status, staff and dates run in Firestore; name search runs after (see paginate).
+// Newest added first. Status and staff run in Firestore; name search and dates run after (see paginate).
 export async function listAppointments(userId: string, query: AppointmentQuery) {
   const { page, limit, search, from, to, status, staff } = query;
-  // dateTime ("YYYY-MM-DD HH:MM") sorts by date then time, and works for the date range too.
-  let firestoreQuery = whereEquals(appointments(userId), { status, staff });
-  if (from) {
-    firestoreQuery = firestoreQuery.where("dateTime", ">=", from).where("dateTime", "<=", `${to || from} 99:99`);
-  }
-  firestoreQuery = firestoreQuery.orderBy("dateTime", "asc");
+  const firestoreQuery = whereEquals(appointments(userId), { status, staff }).orderBy("createdAt", "desc");
 
-  const nameMatches = search ? (item: { studentName: string }) => includesText(item.studentName, search) : undefined;
-  const { items, pagination } = await paginate(firestoreQuery, { page, limit }, toAppointment, nameMatches);
+  const matches =
+    search || from
+      ? (item: { studentName: string; date: string }) =>
+          includesText(item.studentName, search) && inDateRange(item.date, from, to)
+      : undefined;
+  const { items, pagination } = await paginate(firestoreQuery, { page, limit }, toAppointment, matches);
   return { appointments: items, pagination };
 }
 
