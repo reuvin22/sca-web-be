@@ -30,3 +30,9 @@ export function toSkipTake({ page, limit }: PaginationQuery) {
 export function buildPaginationMeta({ page, limit }: PaginationQuery, total: number): PaginationMeta {
   return { page, limit, total, totalPages: Math.ceil(total / limit) };
 }
+
+// One page of a list that was already filtered and sorted in code: { items, pagination }
+export function paginateArray<T>(items: T[], pagination: PaginationQuery) {
+  const { skip, take } = toSkipTake(pagination);
+  return { items: items.slice(skip, skip + take), pagination: buildPaginationMeta(pagination, items.length) };
+}

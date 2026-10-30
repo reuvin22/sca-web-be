@@ -4,6 +4,7 @@ import appointmentRoutes from "../modules/appointment/appointment.routes";
 import authRoutes from "../modules/auth/auth.routes";
 import caseRoutes from "../modules/case/case.routes";
 import categoryRoutes from "../modules/category/category.routes";
+import featureRoutes from "../modules/feature/feature.routes";
 import fileRoutes from "../modules/file/file.routes";
 import profileRoutes from "../modules/profile/profile.routes";
 import reportRoutes from "../modules/report/report.routes";
@@ -29,6 +30,7 @@ router.use("/categories", categoryRoutes);
 router.use("/todo", todoRoutes);
 router.use("/files", fileRoutes);
 router.use("/support", supportRoutes); // sending: everyone; board: developers
+router.use("/features", featureRoutes); // feature requests list + voting: everyone
 router.use("/reports", reportRoutes);
 router.use("/team", teamRoutes); // developers only
 router.use("/updates", updateRoutes); // reading: everyone; publishing: developers

@@ -3,6 +3,7 @@ import type { Attachment } from "../../utils/attachments";
 import type {
   REPORT_STATUSES,
   REPORT_TYPES,
+  REVIEW_STATUSES,
   attachmentParamsSchema,
   boardQuerySchema,
   supportRequestSchema,
@@ -15,6 +16,7 @@ export type UpdateReportInput = z.infer<typeof updateReportSchema>;
 export type AttachmentParams = z.infer<typeof attachmentParamsSchema>;
 export type ReportType = (typeof REPORT_TYPES)[number];
 export type ReportStatus = (typeof REPORT_STATUSES)[number];
+export type ReviewStatus = (typeof REVIEW_STATUSES)[number];
 
 // Firestore: supportRequests/{id}. One shared collection so developers can see every report.
 export interface SupportRequestDoc {
@@ -28,6 +30,10 @@ export interface SupportRequestDoc {
   attachments: Attachment[]; // images/videos, bugs only
   updateId: string | null; // the published system update, once implemented
   doneAt?: string; // when it was last moved to Done (Updates page order); missing on older reports
+  // Feature requests only (missing on older ones = under review, no votes)
+  review?: ReviewStatus;
+  voterIds?: string[]; // users who voted (one vote each, approved requests only)
+  votes?: number; // voterIds.length, kept for sorting
   createdAt: string;
   updatedAt: string;
 }

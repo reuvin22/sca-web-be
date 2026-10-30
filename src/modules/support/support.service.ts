@@ -21,7 +21,8 @@ type Developer = { id: string; name: string; email: string };
 
 // Safe for the browser: attachments without storage keys, assignee as { id, name }
 function toReport(doc: DocumentSnapshot, team: Developer[]) {
-  const { attachments, assigneeId, ...report } = doc.data() as SupportRequestDoc;
+  // Who voted stays on the server; only the vote count is sent
+  const { attachments, assigneeId, voterIds: _voterIds, ...report } = doc.data() as SupportRequestDoc;
   const assignee = team.find((member) => member.id === assigneeId);
   return {
     id: doc.id,
@@ -49,6 +50,7 @@ export async function createSupportRequest(userId: string, input: SupportRequest
     reporter: { userId, name: user.name, email: user.email },
     attachments: await saveAttachments(`support/${ref.id}`, files),
     updateId: null,
+    ...(input.type === "feature" && { review: "under-review", voterIds: [], votes: 0 }),
     createdAt: now,
     updatedAt: now,
   };
@@ -73,10 +75,12 @@ export async function listBoard({ type }: BoardQuery) {
   return snapshot.docs.map((doc) => toReport(doc, team)).sort(newestFirst((report) => report.createdAt));
 }
 
-// Move a card to another column and/or assign it. Only team developers can be assigned.
+// Move a card to another column, assign it, and/or review a feature request.
+// Only team developers can be assigned.
 export async function updateReport(id: string, input: UpdateReportInput) {
   const ref = supportCollection.doc(id);
-  dataOrNotFound(await ref.get(), "Report");
+  const report = dataOrNotFound<SupportRequestDoc>(await ref.get(), "Report");
+  if (input.review && report.type !== "feature") throw new ApiError(400, "Only feature requests can be approved or rejected");
   const team = await teamService.listDevelopers();
 
   if (input.assigneeId && !team.some((member) => member.id === input.assigneeId)) {
