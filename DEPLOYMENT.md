@@ -20,7 +20,7 @@ Both run the same commands:
 | `CLIENT_URL` | secret | secret | Deployed frontend URL (CORS + email links) |
 | `ENCRYPTION_KEY` | secret | secret | **Copy from your local `.env`.** Use the same key everywhere, or existing encrypted data and files can't be read. Back it up. |
 | `JWT_SECRET` | auto-generated | secret | Changing it signs everyone out |
-| Firebase service account | Secret File `sca.json` + `FIREBASE_SERVICE_ACCOUNT_PATH=/etc/secrets/sca.json` | `FIREBASE_SERVICE_ACCOUNT_JSON` = the whole `sca.json` on one line | DigitalOcean has no secret files |
+| `FIREBASE_SERVICE_ACCOUNT_JSON` | secret | secret | The whole content of `sca.json`. Locally, `FIREBASE_SERVICE_ACCOUNT_PATH=sca.json` reads the file instead. |
 | `BREVO_API_KEY`, `BREVO_SENDER_EMAIL` | secret | secret | Sender must be verified in Brevo |
 | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` | secret | secret | Cloudflare R2 |
 | `PORT` | set by Render | `8080` (in spec) | The app reads `PORT` |
@@ -31,10 +31,9 @@ The app checks all variables at startup and stops with a clear message if one is
 
 1. Push `sca-be` to GitHub (render.yaml must be in the repo root).
 2. Render dashboard → **New → Blueprint** → choose the repo. Render reads `render.yaml`.
-3. Fill in the values it asks for (the `sync: false` variables above).
-4. Service → **Environment → Secret Files** → add a file named `sca.json` with the contents of your local `sca.json`.
-5. Deploy. Check `https://<service>.onrender.com/health` returns `{"success":true,"status":"ok"}`.
-6. In the frontend, set `VITE_API_BASE_URL=https://<service>.onrender.com/api/v1` and redeploy it.
+3. Fill in the values it asks for (the `sync: false` variables above). For `FIREBASE_SERVICE_ACCOUNT_JSON`, paste the whole content of `sca.json`.
+4. Deploy. Check `https://<service>.onrender.com/health` returns `{"success":true,"status":"ok"}`.
+5. In the frontend, set `VITE_API_BASE_URL=https://<service>.onrender.com/api/v1` and redeploy it.
 
 Notes:
 - `plan: free` sleeps after 15 minutes without traffic, so the first request after that is slow (about 1 minute). Change `plan` to `starter` for production.
@@ -44,7 +43,7 @@ Notes:
 
 1. In `.do/app.yaml`, set `github.repo` (and `branch` if not `master`).
 2. Create the app: `doctl apps create --spec .do/app.yaml`, or in the dashboard **Apps → Create App** and import the spec.
-3. In **Settings → Environment Variables**, fill every `SECRET` value. For `FIREBASE_SERVICE_ACCOUNT_JSON`, paste `sca.json` as one line:
+3. In **Settings → Environment Variables**, fill every `SECRET` value. For `FIREBASE_SERVICE_ACCOUNT_JSON`, paste the content of `sca.json` (same as on Render). To get it on one line:
    `node -p "JSON.stringify(require('./sca.json'))"`
 4. Deploy and check `/health`.
 5. Point the frontend's `VITE_API_BASE_URL` to the new URL. Moving hosts doesn't move data: Firestore and R2 stay the same.
