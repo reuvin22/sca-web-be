@@ -1,7 +1,8 @@
 import { z } from "zod";
-import { optionalText } from "../../utils/schema";
+import { optionalText, requiredText } from "../../utils/schema";
 
-// Same shape the frontend keeps in its auth store: { user, school }
+// Same shape the frontend keeps in its auth store: { user, school }.
+// Every school field is required: new users must fill them before using the system.
 export const updateProfileSchema = z.object({
   user: z.object({
     fullName: z.string().trim().min(2).max(100),
@@ -10,13 +11,13 @@ export const updateProfileSchema = z.object({
     phone: optionalText(30).refine((value) => /^[0-9+\-() ]*$/.test(value), "Phone can only contain digits, spaces, +, - and ()"),
   }),
   school: z.object({
-    name: z.string().trim().min(1, "School name is required").max(200),
-    schoolId: optionalText(50),
-    region: optionalText(100),
-    division: optionalText(100),
-    schoolYear: optionalText(20),
-    reportingMonth: optionalText(30),
-    schoolHead: optionalText(100),
-    privacy: optionalText(100),
+    name: requiredText(200),
+    schoolId: requiredText(50),
+    region: requiredText(100),
+    division: requiredText(100),
+    schoolYear: requiredText(20),
+    reportingMonth: requiredText(30),
+    schoolHead: requiredText(100),
+    privacy: requiredText(100),
   }),
 });
