@@ -27,6 +27,7 @@ export interface SupportRequestDoc {
   reporter: { userId: string; name: string; email: string };
   attachments: Attachment[]; // images/videos, bugs only
   updateId: string | null; // the published system update, once implemented
+  doneAt?: string; // when it was last moved to Done (Updates page order); missing on older reports
   createdAt: string;
   updatedAt: string;
 }

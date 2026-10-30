@@ -56,14 +56,21 @@ export async function createSupportRequest(userId: string, input: SupportRequest
   return { id: ref.id, type: request.type, subject: request.subject, createdAt: now };
 }
 
+// Newest first by an ISO date. Sorted here (not in Firestore) so the queries
+// filter on one field only and need no composite index.
+const newestFirst =
+  <T,>(dateOf: (item: T) => string) =>
+  (a: T, b: T) =>
+    dateOf(b).localeCompare(dateOf(a));
+
 // Every report of one type, newest first, for the developers' Kanban board.
 // Not paged: a board needs all its cards (like the To Do board).
 export async function listBoard({ type }: BoardQuery) {
   const [snapshot, team] = await Promise.all([
-    supportCollection.where("type", "==", type).orderBy("createdAt", "desc").get(),
+    supportCollection.where("type", "==", type).get(),
     teamService.listDevelopers(),
   ]);
-  return snapshot.docs.map((doc) => toReport(doc, team));
+  return snapshot.docs.map((doc) => toReport(doc, team)).sort(newestFirst((report) => report.createdAt));
 }
 
 // Move a card to another column and/or assign it. Only team developers can be assigned.
@@ -75,7 +82,9 @@ export async function updateReport(id: string, input: UpdateReportInput) {
   if (input.assigneeId && !team.some((member) => member.id === input.assigneeId)) {
     throw new ApiError(400, "Only developers on the team can be assigned");
   }
-  await ref.update({ ...input, updatedAt: nowIso() });
+  const now = nowIso();
+  // doneAt orders the Updates page: the task finished last is listed first
+  await ref.update({ ...input, updatedAt: now, ...(input.status === "done" && { doneAt: now }) });
   return toReport(await ref.get(), team);
 }
 
@@ -84,13 +93,14 @@ export async function getAttachment(id: string, index: number) {
   return readAttachment(report.attachments, index);
 }
 
-// Done reports (both types) for the Updates page, newest first, with whether an update was published
+// Done reports (both types) for the Updates page, with whether an update was published.
+// The task moved to Done last is first (older reports without doneAt use their last change).
 export async function listDoneReports() {
   const [snapshot, team] = await Promise.all([
-    supportCollection.where("status", "==", "done").orderBy("updatedAt", "desc").get(),
+    supportCollection.where("status", "==", "done").get(),
     teamService.listDevelopers(),
   ]);
-  return snapshot.docs.map((doc) => toReport(doc, team));
+  return snapshot.docs.map((doc) => toReport(doc, team)).sort(newestFirst((report) => report.doneAt ?? report.updatedAt));
 }
 
 // Used when an update is published for a done report
