@@ -44,12 +44,12 @@ function toFeature(feature: FeatureDoc, userId: string, ranks: Map<string, numbe
   };
 }
 
-// All requests with one review status, most votes first, with search
+// Requests with one review status ("all" = everything except rejected), most votes first, with search
 export async function listFeatures(userId: string, { status, search, page, limit }: FeatureQuery) {
   const features = await loadFeatures();
   const ranks = rankApproved(features);
   const matching = features
-    .filter((feature) => reviewOf(feature) === status)
+    .filter((feature) => (status === "all" ? reviewOf(feature) !== "rejected" : reviewOf(feature) === status))
     .filter((feature) => includesText(`${feature.subject} ${feature.description}`, search))
     .sort(byVotes);
   const { items, pagination } = paginateArray(matching, { page, limit });
