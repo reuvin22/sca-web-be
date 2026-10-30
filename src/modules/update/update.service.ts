@@ -5,12 +5,14 @@ import { broadcast } from "../../utils/realtime";
 import { ApiError } from "../../utils/apiError";
 import { readAttachment, saveAttachments, toPublicAttachments } from "../../utils/attachments";
 import { nowIso } from "../../utils/date";
+import { decryptJson, encryptJson, isSealed } from "../../utils/encryption";
 import { dataOrNotFound, paginate, usersCollection } from "../../utils/firestore";
 import { MAX_PAGE_SIZE, type PaginationQuery } from "../../utils/pagination";
 import type { UserDoc } from "../profile/profile.types";
+import { getUserInfo } from "../profile/profile.user";
 import * as supportService from "../support/support.service";
 import { isBlankHtml, sanitizeUpdateHtml } from "./update.sanitize";
-import type { CreateUpdateInput, UpdateDoc } from "./update.types";
+import type { CreateUpdateInput, LegacyUpdateDoc, SystemUpdate, UpdateContent, UpdateDoc } from "./update.types";
 
 // System updates: published by a developer when a done report is implemented.
 // Every other user sees them in their notifications.
@@ -22,8 +24,17 @@ interface UploadedMedia {
   buffer: Buffer;
 }
 
+// The update with its encrypted content decrypted (older updates have plain fields)
+function readUpdate(raw: UpdateDoc | LegacyUpdateDoc): SystemUpdate {
+  if (!isSealed(raw)) return raw;
+  const { data, ...fields } = raw;
+  return { ...fields, ...decryptJson<UpdateContent>(data) };
+}
+
+const loadUpdate = (doc: DocumentSnapshot) => readUpdate(doc.data() as UpdateDoc | LegacyUpdateDoc);
+
 function toUpdate(doc: DocumentSnapshot) {
-  const { media, ...update } = doc.data() as UpdateDoc;
+  const { media, ...update } = loadUpdate(doc);
   return { id: doc.id, ...update, media: toPublicAttachments(media) };
 }
 
@@ -33,23 +44,26 @@ export async function publishUpdate(authorId: string, input: CreateUpdateInput, 
   const contentHtml = sanitizeUpdateHtml(input.content);
   if (isBlankHtml(contentHtml) && files.length === 0) throw new ApiError(400, "Write what changed or add images/videos");
 
-  const author = (await usersCollection.doc(authorId).get()).data() as UserDoc;
+  const author = await getUserInfo(authorId);
   const ref = updatesCollection.doc();
-  const update: UpdateDoc = {
-    reportId: input.reportId,
-    reportType: report.type,
+  const content: UpdateContent = {
     title: report.subject,
     contentHtml,
     media: await saveAttachments(`updates/${ref.id}`, files),
+    authorName: author?.name ?? "",
+  };
+  const update: UpdateDoc = {
+    reportId: input.reportId,
+    reportType: report.type,
     authorId,
-    authorName: author.name,
     publishedAt: nowIso(),
+    data: encryptJson(content),
   };
   await ref.set(update);
   await supportService.markImplemented(input.reportId, ref.id);
 
   // Real time: every other signed-in user gets the notification right away
-  const notification = { id: ref.id, title: update.title, reportType: update.reportType, publishedAt: update.publishedAt, read: false };
+  const notification = { id: ref.id, title: content.title, reportType: update.reportType, publishedAt: update.publishedAt, read: false };
   broadcast("system-update", notification, { exceptUserId: authorId });
 
   return toUpdate(await ref.get());
@@ -70,7 +84,7 @@ export async function getUpdate(id: string) {
 }
 
 export async function getMedia(id: string, index: number) {
-  const update = dataOrNotFound<UpdateDoc>(await updatesCollection.doc(id).get(), "Update");
+  const update = readUpdate(dataOrNotFound<UpdateDoc | LegacyUpdateDoc>(await updatesCollection.doc(id).get(), "Update"));
   return readAttachment(update.media, index);
 }
 
@@ -91,7 +105,7 @@ export async function getUpdateNotifications(userId: string) {
   const readIds = [...(user?.readUpdateIds ?? []), ...(user?.readNotificationIds ?? []).map((id) => id.replace(/^update-/, ""))];
 
   return snapshot.docs
-    .map((doc) => ({ id: doc.id, ...(doc.data() as UpdateDoc) }))
+    .map((doc) => ({ id: doc.id, ...loadUpdate(doc) }))
     .filter((update) => update.authorId !== userId) // the author isn't notified about their own update
     .slice(0, MAX_PAGE_SIZE)
     .map(({ id, title, reportType, publishedAt }) => ({ id, title, reportType, publishedAt, read: readIds.includes(id) }));

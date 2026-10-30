@@ -19,6 +19,7 @@ Both run the same commands:
 |----------|--------|--------------|-------|
 | `CLIENT_URL` | secret | secret | Deployed frontend URL (CORS + email links) |
 | `ENCRYPTION_KEY` | secret | secret | **Copy from your local `.env`.** Use the same key everywhere, or existing encrypted data and files can't be read. Back it up. |
+| `ENCRYPTION_KEY_PREVIOUS` | secret (empty) | secret (empty) | Only during a key rotation: the old key. Remove it when `db:rotate-key` is done. |
 | `JWT_SECRET` | auto-generated | secret | Changing it signs everyone out |
 | `FIREBASE_SERVICE_ACCOUNT_JSON` | secret | secret | The whole content of `sca.json`. Locally, `FIREBASE_SERVICE_ACCOUNT_PATH=sca.json` reads the file instead. |
 | `BREVO_API_KEY`, `BREVO_SENDER_EMAIL` | secret | secret | Sender must be verified in Brevo |
@@ -26,6 +27,26 @@ Both run the same commands:
 | `PORT` | set by Render | `8080` (in spec) | The app reads `PORT` |
 
 The app checks all variables at startup and stops with a clear message if one is missing or invalid (see the deploy logs).
+
+## Protecting the encryption key
+
+- Keep an **offline backup** of `ENCRYPTION_KEY` (e.g. a password manager and a printed copy in a safe place). Without it, all encrypted data and files are lost.
+- Only the owner should be able to see Render's Environment page: in Render, give other people the **Viewer** role, not Admin.
+
+## Rotating the encryption key
+
+Do this if the key may have leaked, or once a year.
+
+1. Make a new key: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
+2. In your local `.env` **and** on Render: set `ENCRYPTION_KEY_PREVIOUS` to the current key and `ENCRYPTION_KEY` to the new one. Deploy.
+3. Run `npm run db:rotate-key -- --dry-run`, then `npm run db:rotate-key`. It re-encrypts every Firestore value and every R2 file with the new key.
+4. Remove `ENCRYPTION_KEY_PREVIOUS` locally and on Render, deploy again, and back up the new key offline.
+
+## Firestore security rules
+
+The browser never talks to Firestore directly, so `firestore.rules` denies everything. Deploy it once (needs an account with access to the Firebase project): `npx firebase-tools deploy --only firestore:rules`, or paste the rules in Firebase console → Firestore → Rules.
+
+Optional: in Google Cloud → Firestore → TTL, add a policy on the `rateLimits` collection, field `expireAt`, so old rate-limit counters are deleted automatically.
 
 ## Render (current)
 

@@ -2,6 +2,7 @@ import type { RequestHandler } from "express";
 import multer from "multer";
 import path from "node:path";
 import { ApiError } from "../utils/apiError";
+import { matchesSignature } from "../utils/fileSignature";
 
 export const getExtension = (fileName: string) => path.extname(fileName).toLowerCase();
 
@@ -33,7 +34,8 @@ function createMulter({ allowedTypes, maxSizeMb }: UploadOptions, maxCount: numb
   });
 }
 
-// Turns multer errors into 400s and checks the 10 MB image rule
+// Turns multer errors into 400s, checks the 10 MB image rule, and checks that each file's
+// content really is the type its extension says (see utils/fileSignature)
 function checkUpload(error: unknown, files: Express.Multer.File[], maxSizeMb: number): ApiError | Error | null {
   if (error instanceof multer.MulterError) {
     if (error.code === "LIMIT_FILE_SIZE") return new ApiError(400, `Files must be ${maxSizeMb} MB or smaller`);
@@ -45,6 +47,8 @@ function checkUpload(error: unknown, files: Express.Multer.File[], maxSizeMb: nu
   if (error) return error as Error;
   const bigImage = files.find((file) => isImage(file.originalname) && file.size > IMAGE_MAX_SIZE_MB * MB);
   if (bigImage) return new ApiError(400, `${bigImage.originalname}: images must be ${IMAGE_MAX_SIZE_MB} MB or smaller`);
+  const fake = files.find((file) => !matchesSignature(getExtension(file.originalname), file.buffer));
+  if (fake) return new ApiError(400, `${fake.originalname}: the file content does not match its type`);
   return null;
 }
 

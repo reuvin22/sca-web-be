@@ -197,3 +197,108 @@ export function invitationEmail(inviterName: string, email: string, link: string
     text: `${inviterName} invited ${email} to join the SCA developer team.\n\nCreate your developer account: ${link}\n\n${footnote}`,
   };
 }
+
+// Second step of password sign-in: a 6-digit code (two-factor authentication)
+export function loginCodeEmail(name: string, code: string, minutes: number): EmailContent {
+  const footnote = `This code expires in ${minutes} minutes. If you didn't try to sign in, change your password right away.`;
+  const codeBox = `<div style="margin:14px auto 4px;display:inline-block;padding:12px 22px;border-radius:12px;background:#f4f1fb;font-size:30px;font-weight:700;letter-spacing:8px;color:#5b21b6;">${code}</div>`;
+
+  return {
+    subject: `${code} is your SCA sign-in code`,
+    html: emailLayout({
+      preheader: `Your sign-in code is ${code}.`,
+      badge: "🔐",
+      title: `Hi ${escapeHtml(name)}! 👋`,
+      message: `Use this code to finish signing in:<br>${codeBox}`,
+      buttonLabel: "Open SCA",
+      link: `${env.CLIENT_URL}/login`,
+      note: "🔒 Never share this code. SCA staff will never ask for it.",
+      footnote,
+    }),
+    text: `Hi ${name}!\n\nYour SCA sign-in code is ${code}\n\n${footnote}`,
+  };
+}
+
+// Someone tried to register with an email that already has an account. Sent to that email,
+// so the sign-up page never reveals which emails are registered.
+export function accountExistsEmail(name: string, email: string): EmailContent {
+  const footnote = "If you didn't try to create an account, you can ignore this email. Your account is safe.";
+
+  return {
+    subject: "You already have an SCA account",
+    html: emailLayout({
+      preheader: "Sign in or reset your password instead.",
+      badge: "👋",
+      title: `Hi ${escapeHtml(name)}!`,
+      message: `Someone (hopefully you) tried to create a new account with <strong style="color:#7c3aed;">${escapeHtml(email)}</strong>, but you already have one. Sign in, or use "Forgot password" if you can't remember it.`,
+      buttonLabel: "Sign in",
+      link: `${env.CLIENT_URL}/login`,
+      note: "🔒 No new account was created.",
+      footnote,
+    }),
+    text: `Hi ${name}!\n\nSomeone tried to create a new account with ${email}, but you already have one. Sign in: ${env.CLIENT_URL}/login\n\n${footnote}`,
+  };
+}
+
+// Sign-up with a mobile number that another account already uses
+export function phoneInUseEmail(name: string, email: string): EmailContent {
+  const footnote = "If you didn't try to create an account, you can ignore this email.";
+
+  return {
+    subject: "We couldn't create your SCA account",
+    html: emailLayout({
+      preheader: "That mobile number is already registered.",
+      badge: "📱",
+      title: `Hi ${escapeHtml(name)}!`,
+      message: `We couldn't create an account for <strong style="color:#7c3aed;">${escapeHtml(email)}</strong> because the mobile number you entered is already used by another account. Please register again with your own mobile number, or sign in if you already have an account.`,
+      buttonLabel: "Register again",
+      link: `${env.CLIENT_URL}/register`,
+      note: "🔒 Each account needs its own email and mobile number.",
+      footnote,
+    }),
+    text: `Hi ${name}!\n\nWe couldn't create an account for ${email} because the mobile number is already used by another account. Register again: ${env.CLIENT_URL}/register\n\n${footnote}`,
+  };
+}
+
+// An existing account was invited to the developer team; it gets the role only after accepting
+export function acceptInvitationEmail(inviterName: string, email: string, link: string): EmailContent {
+  const footnote = "This invitation expires in 72 hours. If you weren't expecting it, ignore this email and nothing changes.";
+
+  return {
+    subject: "You're invited to the SCA developer team 🚀",
+    html: emailLayout({
+      preheader: `${inviterName} invited you to join the SCA developer team.`,
+      badge: "🛠️",
+      title: "You're invited! 🎉",
+      message: `<strong>${escapeHtml(inviterName)}</strong> invited your account <strong style="color:#7c3aed;">${escapeHtml(email)}</strong> to join the SCA developer team. You'll keep everything you have now and also get the developer pages.`,
+      buttonLabel: "Accept invitation",
+      link,
+      note: "🔒 Nothing changes unless you accept.",
+      footnote,
+    }),
+    text: `${inviterName} invited your account ${email} to join the SCA developer team.\n\nAccept the invitation: ${link}\n\n${footnote}`,
+  };
+}
+
+const ACTIVITY_LABELS: Record<string, string> = { delete: "deleted", download: "downloaded" };
+
+// Many deletions or downloads in a few minutes (see audit.service)
+export function unusualActivityEmail(name: string, action: string, count: number, minutes: number): EmailContent {
+  const did = ACTIVITY_LABELS[action] ?? action;
+  const footnote = "If this was you, you can ignore this email.";
+
+  return {
+    subject: "Unusual activity on your SCA account",
+    html: emailLayout({
+      preheader: `${count} records were ${did} in ${minutes} minutes.`,
+      badge: "⚠️",
+      title: `Hi ${escapeHtml(name)},`,
+      message: `Your account ${did} <strong>${count} records in ${minutes} minutes</strong>. If this wasn't you, sign in, choose <strong>Sign out of all devices</strong> on your Profile page and change your password.`,
+      buttonLabel: "Review my account",
+      link: `${env.CLIENT_URL}/profile`,
+      note: "🔒 You can see your recent activity on your Profile page.",
+      footnote,
+    }),
+    text: `Hi ${name},\n\nYour account ${did} ${count} records in ${minutes} minutes. If this wasn't you, sign out of all devices on your Profile page and change your password: ${env.CLIENT_URL}/profile\n\n${footnote}`,
+  };
+}

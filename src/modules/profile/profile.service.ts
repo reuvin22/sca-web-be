@@ -3,39 +3,30 @@ import { rolesOf } from "../../utils/roles";
 import { decryptAddress, encryptAddress, phoneHash } from "../../utils/address";
 import { ApiError } from "../../utils/apiError";
 import { nowIso } from "../../utils/date";
-import { decryptOptional, encryptOptional } from "../../utils/encryption";
+import { decryptOptional, encryptOptional, lookupHashes } from "../../utils/encryption";
 import { dataOrNotFound, usersCollection } from "../../utils/firestore";
 import { deleteObject, readEncryptedObject, saveEncryptedObject } from "../../utils/storage";
 import type { UploadedFile } from "../file/file.types";
 import { PHOTO_TYPES } from "./profile.photo";
-import type { ProfilePhoto, School, UpdateProfileInput, UserDoc } from "./profile.types";
-
-export const EMPTY_SCHOOL: School = {
-  name: "",
-  schoolId: "",
-  region: "",
-  division: "",
-  schoolYear: "",
-  reportingMonth: "",
-  schoolHead: "",
-  privacy: "",
-};
+import type { ProfilePhoto, UpdateProfileInput, UserDoc } from "./profile.types";
+import { emailQueries, encodeUser, readUser } from "./profile.user";
 
 // Same shape the frontend stores: { user, school }. Never includes the password hash.
 // `photoUpdatedAt` is null without a photo; the picture itself is loaded from GET /profile/photo.
-function toProfile(id: string, user: UserDoc) {
+function toProfile(id: string, raw: UserDoc) {
+  const { name, email, role, school } = readUser(raw);
   return {
     user: {
       id,
-      fullName: user.name,
-      email: user.email,
-      role: user.role,
-      phone: decryptOptional(user.phone),
-      address: decryptAddress(user.address), // null until set
-      photoUpdatedAt: user.photo?.updatedAt ?? null,
-      accessRoles: rolesOf(user),
+      fullName: name,
+      email,
+      role,
+      phone: decryptOptional(raw.phone),
+      address: decryptAddress(raw.address), // null until set
+      photoUpdatedAt: raw.photo?.updatedAt ?? null,
+      accessRoles: rolesOf(raw),
     },
-    school: { ...EMPTY_SCHOOL, ...user.school },
+    school,
   };
 }
 
@@ -45,25 +36,21 @@ export async function getProfile(userId: string) {
 }
 
 export async function updateProfile(userId: string, { user, school }: UpdateProfileInput) {
-  const sameEmail = await usersCollection.where("email", "==", user.email).limit(1).get();
-  if (sameEmail.docs.some((doc) => doc.id !== userId)) {
+  const sameEmail = await Promise.all(emailQueries(user.email).map((query) => query.get()));
+  if (sameEmail.flatMap((snapshot) => snapshot.docs).some((doc) => doc.id !== userId)) {
     throw new ApiError(409, "An account with this email already exists");
   }
-  const hash = phoneHash(user.phone);
-  const samePhone = await usersCollection.where("phoneHash", "==", hash).limit(2).get();
+  const samePhone = await usersCollection.where("phoneHash", "in", lookupHashes(`phone:${user.phone}`)).limit(2).get();
   if (samePhone.docs.some((doc) => doc.id !== userId)) {
     throw new ApiError(409, "An account with this mobile number already exists");
   }
 
   const ref = usersCollection.doc(userId);
   await ref.update({
-    name: user.fullName,
-    email: user.email,
-    role: user.role,
+    ...encodeUser({ name: user.fullName, email: user.email, role: user.role, school }),
     phone: encryptOptional(user.phone),
-    phoneHash: hash,
+    phoneHash: phoneHash(user.phone),
     address: encryptAddress(user.address),
-    school,
   });
   return getProfile(userId);
 }

@@ -3,10 +3,20 @@ import { db } from "../../config/firebase";
 import { ApiError } from "../../utils/apiError";
 import { readAttachment, saveAttachments, toPublicAttachments } from "../../utils/attachments";
 import { nowIso } from "../../utils/date";
-import { dataOrNotFound, usersCollection } from "../../utils/firestore";
-import type { UserDoc } from "../profile/profile.types";
+import { decryptJson, encryptJson, isSealed } from "../../utils/encryption";
+import { dataOrNotFound } from "../../utils/firestore";
+import { getUserInfo } from "../profile/profile.user";
 import * as teamService from "../team/team.service";
-import type { BoardQuery, ReportType, SupportRequestDoc, SupportRequestInput, UpdateReportInput } from "./support.types";
+import type {
+  BoardQuery,
+  LegacySupportRequestDoc,
+  ReportContent,
+  ReportType,
+  SupportRequest,
+  SupportRequestDoc,
+  SupportRequestInput,
+  UpdateReportInput,
+} from "./support.types";
 
 // Contact Support messages. Any user can send one; developers see them all on a Kanban board.
 export const supportCollection = db.collection("supportRequests");
@@ -19,10 +29,22 @@ interface UploadedMedia {
 
 type Developer = { id: string; name: string; email: string };
 
+// The report with its encrypted content decrypted (older reports have plain fields)
+export function readReport(raw: SupportRequestDoc | LegacySupportRequestDoc): SupportRequest {
+  if (isSealed(raw)) {
+    const { data, ...fields } = raw;
+    return { ...fields, ...decryptJson<ReportContent>(data) };
+  }
+  const { reporter, ...fields } = raw;
+  return { ...fields, reporterId: reporter.userId, reporter: { name: reporter.name, email: reporter.email } };
+}
+
+const loadReport = (doc: DocumentSnapshot) => readReport(doc.data() as SupportRequestDoc | LegacySupportRequestDoc);
+
 // Safe for the browser: attachments without storage keys, assignee as { id, name }
 function toReport(doc: DocumentSnapshot, team: Developer[]) {
   // Who voted stays on the server; only the vote count is sent
-  const { attachments, assigneeId, voterIds: _voterIds, ...report } = doc.data() as SupportRequestDoc;
+  const { attachments, assigneeId, voterIds: _voterIds, ...report } = loadReport(doc);
   const assignee = team.find((member) => member.id === assigneeId);
   return {
     id: doc.id,
@@ -36,26 +58,30 @@ export async function createSupportRequest(userId: string, input: SupportRequest
   if (input.type !== "bug" && files.length > 0) {
     throw new ApiError(400, "Images and videos can only be added to bug reports");
   }
-  const user = (await usersCollection.doc(userId).get()).data() as UserDoc;
+  const user = await getUserInfo(userId);
   const ref = supportCollection.doc();
   const now = nowIso();
 
-  const request: SupportRequestDoc = {
-    type: input.type,
+  const content: ReportContent = {
     subject: input.subject,
     description: input.description,
     severity: input.type === "bug" ? input.severity : null,
+    reporter: { name: user?.name ?? "", email: user?.email ?? "" },
+    attachments: await saveAttachments(`support/${ref.id}`, files),
+  };
+  const request: SupportRequestDoc = {
+    type: input.type,
     status: "todo",
     assigneeId: null,
-    reporter: { userId, name: user.name, email: user.email },
-    attachments: await saveAttachments(`support/${ref.id}`, files),
+    reporterId: userId,
+    data: encryptJson(content),
     updateId: null,
     ...(input.type === "feature" && { review: "under-review", voterIds: [], votes: 0 }),
     createdAt: now,
     updatedAt: now,
   };
   await ref.set(request);
-  return { id: ref.id, type: request.type, subject: request.subject, createdAt: now };
+  return { id: ref.id, type: request.type, subject: content.subject, createdAt: now };
 }
 
 // Newest first by an ISO date. Sorted here (not in Firestore) so the queries
@@ -79,7 +105,7 @@ export async function listBoard({ type }: BoardQuery) {
 // Only team developers can be assigned.
 export async function updateReport(id: string, input: UpdateReportInput) {
   const ref = supportCollection.doc(id);
-  const report = dataOrNotFound<SupportRequestDoc>(await ref.get(), "Report");
+  const report = dataOrNotFound<SupportRequestDoc | LegacySupportRequestDoc>(await ref.get(), "Report");
   if (input.review && report.type !== "feature") throw new ApiError(400, "Only feature requests can be approved or rejected");
   const team = await teamService.listDevelopers();
 
@@ -100,7 +126,7 @@ export async function getReport(id: string) {
 }
 
 export async function getAttachment(id: string, index: number) {
-  const report = dataOrNotFound<SupportRequestDoc>(await supportCollection.doc(id).get(), "Report");
+  const report = readReport(dataOrNotFound(await supportCollection.doc(id).get(), "Report"));
   return readAttachment(report.attachments, index);
 }
 
@@ -116,7 +142,7 @@ export async function listDoneReports() {
 
 // Used when an update is published for a done report
 export async function getDoneReport(id: string) {
-  const report = dataOrNotFound<SupportRequestDoc>(await supportCollection.doc(id).get(), "Report");
+  const report = readReport(dataOrNotFound(await supportCollection.doc(id).get(), "Report"));
   if (report.status !== "done") throw new ApiError(400, "Only done tasks can be marked as implemented");
   if (report.updateId) throw new ApiError(409, "An update was already published for this task");
   return report;

@@ -16,6 +16,12 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
   CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(60),
   ENCRYPTION_KEY: z.string().regex(/^[0-9a-fA-F]{64}$/, "Must be 64 hex characters (32 bytes)"),
+  // Only during a key rotation: the old key, still used to read data until db:rotate-key has run
+  ENCRYPTION_KEY_PREVIOUS: z
+    .string()
+    .regex(/^[0-9a-fA-F]{64}$/, "Must be 64 hex characters (32 bytes)")
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
   JWT_SECRET: z.string().min(32, "Must be at least 32 characters"),
   JWT_EXPIRES_IN: z.string().regex(/^\d+[smhd]$/, "Use a number + s/m/h/d, e.g. 1d").default("1d"),
   // Frontend URL: allowed by CORS and used in email links

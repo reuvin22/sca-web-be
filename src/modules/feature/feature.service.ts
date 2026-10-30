@@ -2,14 +2,14 @@ import { db } from "../../config/firebase";
 import { ApiError } from "../../utils/apiError";
 import { includesText } from "../../utils/firestore";
 import { paginateArray, type PaginationQuery } from "../../utils/pagination";
-import { supportCollection } from "../support/support.service";
-import type { SupportRequestDoc } from "../support/support.types";
+import { readReport, supportCollection } from "../support/support.service";
+import type { LegacySupportRequestDoc, SupportRequest, SupportRequestDoc } from "../support/support.types";
 import type { FeatureQuery } from "./feature.types";
 
 // Feature requests page: every user can see them and vote on approved ones.
 // They are the "feature" reports from Contact Support (reviewed by developers on their board).
 
-type FeatureDoc = SupportRequestDoc & { id: string };
+type FeatureDoc = SupportRequest & { id: string };
 
 const reviewOf = (feature: FeatureDoc) => feature.review ?? "under-review";
 const votesOf = (feature: FeatureDoc) => feature.votes ?? 0;
@@ -17,10 +17,10 @@ const votesOf = (feature: FeatureDoc) => feature.votes ?? 0;
 // Most votes first; on a tie, the request sent first comes first
 const byVotes = (a: FeatureDoc, b: FeatureDoc) => votesOf(b) - votesOf(a) || a.createdAt.localeCompare(b.createdAt);
 
-// All feature requests. Small enough to sort and rank in code (votes change all the time).
+// All feature requests, decrypted. Small enough to sort, rank and search in code (votes change all the time).
 async function loadFeatures(): Promise<FeatureDoc[]> {
   const snapshot = await supportCollection.where("type", "==", "feature").get();
-  return snapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() as SupportRequestDoc) }));
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...readReport(doc.data() as SupportRequestDoc | LegacySupportRequestDoc) }));
 }
 
 // Rank (#1, #2, …) of each approved request by votes
@@ -39,7 +39,7 @@ function toFeature(feature: FeatureDoc, userId: string, ranks: Map<string, numbe
     votes: votesOf(feature),
     voted: (feature.voterIds ?? []).includes(userId),
     rank: ranks.get(feature.id) ?? null, // approved only
-    mine: feature.reporter.userId === userId,
+    mine: feature.reporterId === userId,
     column: feature.status, // board column; "done" = built
     updateId: feature.updateId, // the published system update, once implemented
     createdAt: feature.createdAt,
@@ -68,7 +68,7 @@ export async function listFeatures(userId: string, { status, progress, search, p
 export async function listMyFeatures(userId: string, pagination: PaginationQuery) {
   const features = await loadFeatures();
   const ranks = rankApproved(features);
-  const mine = features.filter((feature) => feature.reporter.userId === userId).sort(byVotes);
+  const mine = features.filter((feature) => feature.reporterId === userId).sort(byVotes);
   const { items, pagination: meta } = paginateArray(mine, pagination);
   return { features: items.map((feature) => toFeature(feature, userId, ranks)), pagination: meta };
 }
@@ -78,7 +78,7 @@ export async function listMyFeatures(userId: string, pagination: PaginationQuery
 export async function toggleVote(userId: string, id: string) {
   const ref = supportCollection.doc(id);
   return db.runTransaction(async (transaction) => {
-    const feature = (await transaction.get(ref)).data() as SupportRequestDoc | undefined;
+    const feature = (await transaction.get(ref)).data() as Pick<SupportRequestDoc, "type" | "review" | "voterIds"> | undefined;
     if (!feature || feature.type !== "feature") throw new ApiError(404, "Feature request not found");
     if ((feature.review ?? "under-review") !== "approved") {
       throw new ApiError(400, "Only approved feature requests can be voted on");

@@ -2,7 +2,7 @@ import type { DocumentSnapshot } from "firebase-admin/firestore";
 import crypto from "node:crypto";
 import path from "node:path";
 import { getExtension } from "../../middlewares/upload.middleware";
-import { recordAudit } from "../../utils/audit";
+import { recordAudit } from "../audit/audit.service";
 import { nowIso } from "../../utils/date";
 import { decryptJson, encryptJson, isSealed } from "../../utils/encryption";
 import { dataOrNotFound, includesText, paginate, userCollection } from "../../utils/firestore";

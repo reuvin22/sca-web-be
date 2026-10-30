@@ -40,6 +40,9 @@ services:
       - key: ENCRYPTION_KEY # must be the same key as on Render, or old encrypted data can't be read
         scope: RUN_TIME
         type: SECRET
+      - key: ENCRYPTION_KEY_PREVIOUS # only during a key rotation (see DEPLOYMENT.md)
+        scope: RUN_TIME
+        type: SECRET
       - key: JWT_SECRET
         scope: RUN_TIME
         type: SECRET

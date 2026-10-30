@@ -1,5 +1,5 @@
 import type { DocumentSnapshot } from "firebase-admin/firestore";
-import { recordAudit } from "../../utils/audit";
+import { recordAudit } from "../audit/audit.service";
 import { nowIso } from "../../utils/date";
 import { decryptJson, decryptOptional, encryptJson, isSealed } from "../../utils/encryption";
 import { dataOrNotFound, inDateRange, includesText, paginate, userCollection } from "../../utils/firestore";
