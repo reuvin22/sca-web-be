@@ -5,9 +5,17 @@ export type AppointmentInput = z.infer<typeof appointmentSchema>;
 export type AppointmentQuery = z.infer<typeof appointmentQuerySchema>;
 
 // Firestore: users/{userId}/appointments/{id}
-export type AppointmentDoc = Omit<AppointmentInput, "notes"> & {
+export interface AppointmentDoc {
   appointmentId: string;
-  notes: string | null; // AES-256-GCM encrypted
+  data: string; // AES-256-GCM encrypted JSON: the whole appointment (AppointmentInput)
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Saved before full encryption: plain fields with only the notes encrypted
+export type LegacyAppointmentDoc = Omit<AppointmentInput, "notes"> & {
+  appointmentId: string;
+  notes: string | null;
   createdAt: string;
   updatedAt: string;
 };

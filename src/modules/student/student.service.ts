@@ -1,69 +1,47 @@
 import type { DocumentSnapshot } from "firebase-admin/firestore";
 import { recordAudit } from "../../utils/audit";
 import { nowIso } from "../../utils/date";
-import { decryptJson, encryptJson } from "../../utils/encryption";
-import {
-  dataOrNotFound,
-  includesText,
-  paginate,
-  userCollection,
-  inDateRange,
-  whereEquals,
-} from "../../utils/firestore";
+import { decryptJson, encryptJson, isSealed } from "../../utils/encryption";
+import { dataOrNotFound, includesText, paginate, userCollection, inDateRange } from "../../utils/firestore";
 import { generateRecordId } from "../../utils/token";
-import type { StudentDetails, StudentDoc, StudentInput, StudentQuery } from "./student.types";
+import type { LegacyStudentDoc, StudentDetails, StudentDoc, StudentInput, StudentQuery } from "./student.types";
 
 const students = (userId: string) => userCollection(userId, "students");
 
+// The whole student form is encrypted; only the record ID and times stay plain
+function readStudent(raw: StudentDoc | LegacyStudentDoc): StudentInput {
+  if (isSealed(raw)) return decryptJson<StudentInput>(raw.data);
+
+  // Older records: filter fields were plain and the rest was encrypted as `details`
+  const { details, recordId: _recordId, createdAt: _createdAt, updatedAt: _updatedAt, ...fields } = raw;
+  return { ...fields, ...decryptJson<StudentDetails>(details) };
+}
+
 // Flat object in the same shape the frontend form uses
 function toStudent(doc: DocumentSnapshot) {
-  const { details, createdAt: _createdAt, updatedAt: _updatedAt, ...fields } = doc.data() as StudentDoc;
-  return { id: doc.id, ...fields, ...decryptJson<StudentDetails>(details) };
+  const raw = doc.data() as StudentDoc | LegacyStudentDoc;
+  return { id: doc.id, recordId: raw.recordId, ...readStudent(raw) };
 }
 
-// Splits the form into plain filter fields and the encrypted details JSON
-function toStudentFields(input: StudentInput) {
-  const {
-    dateEncoded,
-    studentName,
-    sex,
-    gradeSection,
-    schoolYear,
-    livesWith,
-    feelingAboutSchool,
-    prefersPrivate,
-    signatureReceived,
-    followUpNeeded,
-    ...details
-  } = input;
-
-  return {
-    dateEncoded,
-    studentName,
-    sex,
-    gradeSection,
-    schoolYear,
-    livesWith,
-    feelingAboutSchool,
-    prefersPrivate,
-    signatureReceived,
-    followUpNeeded,
-    details: encryptJson(details),
-    updatedAt: nowIso(),
-  };
-}
-
-// Newest added first. Dropdown filters run in Firestore; name search and dates run after (see paginate).
+// Newest added first. Fields are encrypted, so search, dates and dropdown filters run
+// here after decrypting (see paginate).
 export async function listStudents(userId: string, query: StudentQuery) {
   const { page, limit, search, from, to, ...filters } = query;
-  const firestoreQuery = whereEquals(students(userId), filters).orderBy("createdAt", "desc");
+  const activeFilters = Object.entries(filters).filter(([, value]) => value) as [keyof StudentInput, string][];
 
   const matches =
-    search || from
-      ? (item: { studentName: string; dateEncoded: string }) =>
-          includesText(item.studentName, search) && inDateRange(item.dateEncoded, from, to)
+    search || from || activeFilters.length
+      ? (item: ReturnType<typeof toStudent>) =>
+          includesText(item.studentName, search) &&
+          inDateRange(item.dateEncoded, from, to) &&
+          activeFilters.every(([field, value]) => item[field] === value)
       : undefined;
-  const { items, pagination } = await paginate(firestoreQuery, { page, limit }, toStudent, matches);
+  const { items, pagination } = await paginate(
+    students(userId).orderBy("createdAt", "desc"),
+    { page, limit },
+    toStudent,
+    matches,
+  );
   return { students: items, pagination };
 }
 
@@ -74,16 +52,25 @@ export async function getStudent(userId: string, id: string) {
 }
 
 export async function createStudent(userId: string, input: StudentInput) {
-  const ref = await students(userId).add({ ...toStudentFields(input), recordId: generateRecordId(), createdAt: nowIso() });
+  const now = nowIso();
+  const student: StudentDoc = { recordId: generateRecordId(), data: encryptJson(input), createdAt: now, updatedAt: now };
+  const ref = await students(userId).add(student);
   await recordAudit(userId, "create", "student", ref.id);
   return toStudent(await ref.get());
 }
 
 export async function updateStudent(userId: string, id: string, input: StudentInput) {
   const ref = students(userId).doc(id);
-  dataOrNotFound(await ref.get(), "Student");
+  const old = dataOrNotFound<StudentDoc | LegacyStudentDoc>(await ref.get(), "Student");
 
-  await ref.update(toStudentFields(input));
+  // set (not update) replaces the whole document, so an older record loses its plain fields
+  const student: StudentDoc = {
+    recordId: old.recordId,
+    data: encryptJson(input),
+    createdAt: old.createdAt,
+    updatedAt: nowIso(),
+  };
+  await ref.set(student);
   await recordAudit(userId, "update", "student", id);
   return toStudent(await ref.get());
 }

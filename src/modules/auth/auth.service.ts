@@ -8,6 +8,7 @@ import { signAccessToken } from "../../utils/jwt";
 import { DEFAULT_ACCESS_ROLE, hasRole, withRole, type AccessRole } from "../../utils/roles";
 import { comparePassword, hashPassword } from "../../utils/password";
 import { DEFAULT_CATEGORIES } from "../category/category.defaults";
+import { toCategoryDoc } from "../category/category.service";
 import { EMPTY_SCHOOL } from "../profile/profile.service";
 import * as profileService from "../profile/profile.service";
 import type { UserDoc } from "../profile/profile.types";
@@ -57,7 +58,7 @@ export async function createAccount(account: NewAccount) {
     DEFAULT_CATEGORIES.forEach((category, index) => {
       // Lists show newest first, so earlier defaults get later times to keep the default order
       const createdAt = new Date(Date.now() - index).toISOString();
-      transaction.create(categories.doc(), { ...category, createdAt });
+      transaction.create(categories.doc(), toCategoryDoc(category, createdAt));
     });
   });
 

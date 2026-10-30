@@ -4,17 +4,25 @@ import path from "node:path";
 import { getExtension } from "../../middlewares/upload.middleware";
 import { recordAudit } from "../../utils/audit";
 import { nowIso } from "../../utils/date";
+import { decryptJson, encryptJson, isSealed } from "../../utils/encryption";
 import { dataOrNotFound, includesText, paginate, userCollection } from "../../utils/firestore";
 import { deleteObject, readEncryptedObject, saveEncryptedObject } from "../../utils/storage";
-import type { FileDoc, FileQuery, UploadedFile } from "./file.types";
+import type { FileDoc, FileInfo, FileQuery, LegacyFileDoc, UploadedFile } from "./file.types";
 import { ALLOWED_TYPES, isFileKind } from "./file.upload";
 
 const files = (userId: string) => userCollection(userId, "files");
 
+// Name, type, size and storage key are encrypted together; only the upload time stays plain (for sorting)
+function readFile(raw: FileDoc | LegacyFileDoc): FileInfo {
+  if (isSealed(raw)) return decryptJson<FileInfo>(raw.data);
+  return { name: raw.name, storageKey: raw.storageKey, mimeType: raw.mimeType, size: raw.size };
+}
+
 // Same shape as the frontend's file list. Download with GET /files/:id/download.
 function toFile(doc: DocumentSnapshot) {
-  const { name, size, mimeType, createdAt } = doc.data() as FileDoc;
-  return { id: doc.id, name, size, mimeType, uploadedAt: createdAt.slice(0, 10) };
+  const raw = doc.data() as FileDoc | LegacyFileDoc;
+  const { name, size, mimeType } = readFile(raw);
+  return { id: doc.id, name, size, mimeType, uploadedAt: raw.createdAt.slice(0, 10) };
 }
 
 // Newest first. Name search and type filter run after the query (see paginate).
@@ -37,13 +45,13 @@ export async function uploadFile(userId: string, upload: UploadedFile) {
   const storageKey = `${userId}/${crypto.randomUUID()}`;
   await saveEncryptedObject(storageKey, upload.buffer);
 
-  const file: FileDoc = {
+  const info: FileInfo = {
     name: path.basename(upload.originalname).slice(0, 255),
     storageKey,
     mimeType: ALLOWED_TYPES[getExtension(upload.originalname)],
     size: upload.size,
-    createdAt: nowIso(),
   };
+  const file: FileDoc = { data: encryptJson(info), createdAt: nowIso() };
   const ref = await files(userId).add(file);
   await recordAudit(userId, "create", "file", ref.id);
   return toFile(await ref.get());
@@ -51,7 +59,7 @@ export async function uploadFile(userId: string, upload: UploadedFile) {
 
 async function getFileDoc(userId: string, id: string) {
   const ref = files(userId).doc(id);
-  return { ref, file: dataOrNotFound<FileDoc>(await ref.get(), "File") };
+  return { ref, file: readFile(dataOrNotFound<FileDoc | LegacyFileDoc>(await ref.get(), "File")) };
 }
 
 export async function downloadFile(userId: string, id: string) {

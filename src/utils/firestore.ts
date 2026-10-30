@@ -27,11 +27,6 @@ export function dataOrNotFound<T>(doc: DocumentSnapshot, label: string): T {
   return doc.data() as T;
 }
 
-// Adds exact-match filters for every value that was sent (undefined = no filter)
-export function whereEquals(query: Query, filters: Record<string, string | undefined>) {
-  return Object.entries(filters).reduce((result, [field, value]) => (value ? result.where(field, "==", value) : result), query);
-}
-
 // Lists show the newest records first (sorted by createdAt). Firestore can't also filter a range on
 // another field, so these filters run here after the query (see paginate).
 

@@ -4,7 +4,8 @@ import { MAX_PAGE_SIZE } from "../../utils/pagination";
 import { getCaseStatus } from "../case/case.status";
 import { decryptCase } from "../case/case.crypto";
 import type { CaseDoc, CaseInput, LegacyCaseDoc } from "../case/case.types";
-import type { AppointmentDoc } from "../appointment/appointment.types";
+import { readAppointment } from "../appointment/appointment.service";
+import type { AppointmentDoc, AppointmentInput, LegacyAppointmentDoc } from "../appointment/appointment.types";
 import * as notificationService from "../notification/notification.service";
 import * as updateService from "../update/update.service";
 import { countBy, countByMonth, workloadByStaff } from "./report.helpers";
@@ -12,10 +13,12 @@ import { countBy, countByMonth, workloadByStaff } from "./report.helpers";
 // Raw counts for the Dashboard and Reports pages. The frontend turns them into charts.
 // Only names, IDs and dates are returned, never remarks or notes.
 
-const APPOINTMENT_FIELDS = ["appointmentId", "studentName", "staff", "date", "time", "status"] as const;
 
 type CaseSummary = Omit<CaseInput, "remarks"> & { id: string; caseNumber: string };
-type AppointmentSummary = Pick<AppointmentDoc, (typeof APPOINTMENT_FIELDS)[number]> & { id: string };
+type AppointmentSummary = Pick<AppointmentInput, "studentName" | "staff" | "date" | "time" | "status"> & {
+  id: string;
+  appointmentId: string;
+};
 
 // Cases are encrypted, so they are decrypted here; remarks are dropped right away.
 async function loadCases(userId: string): Promise<CaseSummary[]> {
@@ -27,9 +30,14 @@ async function loadCases(userId: string): Promise<CaseSummary[]> {
   });
 }
 
+// Appointments are encrypted too; only the fields the reports need are kept (never the notes)
 async function loadAppointments(userId: string): Promise<AppointmentSummary[]> {
-  const snapshot = await userCollection(userId, "appointments").select(...APPOINTMENT_FIELDS).get();
-  return snapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Omit<AppointmentSummary, "id">) }));
+  const snapshot = await userCollection(userId, "appointments").get();
+  return snapshot.docs.map((doc) => {
+    const raw = doc.data() as AppointmentDoc | LegacyAppointmentDoc;
+    const { studentName, staff, date, time, status } = readAppointment(raw);
+    return { id: doc.id, appointmentId: raw.appointmentId, studentName, staff, date, time, status };
+  });
 }
 
 const isReferred = (item: CaseSummary) => item.referredTo !== "" && item.referredTo !== "Not Referred";

@@ -64,3 +64,8 @@ export function decryptBuffer(stored: Buffer): Buffer {
 export function lookupHash(value: string): string {
   return crypto.createHmac("sha256", KEY).update(value).digest("hex");
 }
+
+// Fully encrypted records keep all their content in one encrypted `data` field (JSON).
+// Records saved before that have plain fields instead; services read both until
+// `npm run db:encrypt-all` converts them.
+export const isSealed = (raw: object): raw is { data: string } => typeof (raw as { data?: unknown }).data === "string";

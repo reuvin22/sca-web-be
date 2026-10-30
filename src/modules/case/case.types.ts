@@ -15,7 +15,7 @@ export interface CaseDoc {
 }
 
 // Cases saved before full encryption: plain fields, only remarks encrypted.
-// Still readable; scripts/encrypt-cases.ts re-saves them in the encrypted shape.
+// Still readable; scripts/encrypt-all.ts re-saves them in the encrypted shape.
 export type LegacyCaseDoc = Omit<CaseInput, "remarks"> & {
   caseNumber: string;
   remarks: string | null;

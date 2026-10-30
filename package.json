@@ -8,7 +8,7 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
-    "db:encrypt-cases": "tsx scripts/encrypt-cases.ts",
+    "db:encrypt-all": "tsx scripts/encrypt-all.ts",
     "user:role": "tsx scripts/set-role.ts"
   },
   "author": "",

@@ -6,10 +6,17 @@ export type StudentQuery = z.infer<typeof studentQuerySchema>;
 export type StudentDetails = { [K in keyof typeof detailFields]: z.infer<(typeof detailFields)[K]> };
 
 // Firestore: users/{userId}/students/{id}
-// Fields used for filters are plain; personal details are one encrypted JSON string.
-export type StudentDoc = Omit<StudentInput, keyof StudentDetails> & {
+export interface StudentDoc {
   recordId: string;
-  details: string; // AES-256-GCM encrypted JSON
+  data: string; // AES-256-GCM encrypted JSON: the whole student form (StudentInput)
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Saved before full encryption: filter fields plain, personal details encrypted as `details`
+export type LegacyStudentDoc = Omit<StudentInput, keyof StudentDetails> & {
+  recordId: string;
+  details: string;
   createdAt: string;
   updatedAt: string;
 };

@@ -1,5 +1,6 @@
+import { decryptJson, encryptJson, isSealed } from "../../utils/encryption";
 import { userCollection } from "../../utils/firestore";
-import type { BoardInput } from "./todo.types";
+import type { BoardDoc, BoardInput } from "./todo.types";
 
 // New users start with these empty columns
 const DEFAULT_BOARD: BoardInput = {
@@ -16,12 +17,16 @@ const boardRef = (userId: string) => userCollection(userId, "todo").doc("board")
 
 export async function getBoard(userId: string): Promise<BoardInput> {
   const doc = await boardRef(userId).get();
+  if (!doc.exists) return DEFAULT_BOARD;
+
   // The data was validated with boardSchema before it was saved
-  return doc.exists ? (doc.data() as BoardInput) : DEFAULT_BOARD;
+  const raw = doc.data() as BoardDoc | BoardInput;
+  return isSealed(raw) ? decryptJson<BoardInput>(raw.data) : raw;
 }
 
-// Replaces the whole board
+// Replaces the whole board (columns and cards are encrypted together)
 export async function saveBoard(userId: string, board: BoardInput) {
-  await boardRef(userId).set(board);
+  const doc: BoardDoc = { data: encryptJson(board) };
+  await boardRef(userId).set(doc);
   return board;
 }
