@@ -34,7 +34,7 @@ export async function sendTokenEmail(user: { id: string; email: string; name: st
 
   // The private link: only someone with this email can open it
   const link = `${env.CLIENT_URL}${path}?token=${token}`;
-  await sendEmail({ to: user.email, ...template(user.name, link) });
+  await sendEmail({ to: user.email, ...template(user.name, user.email, link) });
 }
 
 // Returns the token owner's id and deletes the token (it can only be used once).
