@@ -6,9 +6,19 @@ export type CaseQuery = z.infer<typeof caseQuerySchema>;
 export type CaseStatus = (typeof CASE_STATUSES)[number];
 
 // Firestore: users/{userId}/cases/{id}
-export type CaseDoc = Omit<CaseInput, "remarks"> & {
+// All student and case details are one encrypted JSON value (see ENCRYPTED_DATA.md).
+export interface CaseDoc {
   caseNumber: string;
-  remarks: string | null; // AES-256-GCM encrypted
+  data: string; // AES-256-GCM encrypted CaseInput
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Cases saved before full encryption: plain fields, only remarks encrypted.
+// Still readable; scripts/encrypt-cases.ts re-saves them in the encrypted shape.
+export type LegacyCaseDoc = Omit<CaseInput, "remarks"> & {
+  caseNumber: string;
+  remarks: string | null;
   createdAt: string;
   updatedAt: string;
 };

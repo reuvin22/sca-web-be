@@ -2,32 +2,27 @@ import { todayString } from "../../utils/date";
 import { userCollection } from "../../utils/firestore";
 import { MAX_PAGE_SIZE } from "../../utils/pagination";
 import { getCaseStatus } from "../case/case.status";
-import type { CaseDoc } from "../case/case.types";
+import { decryptCase } from "../case/case.crypto";
+import type { CaseDoc, CaseInput, LegacyCaseDoc } from "../case/case.types";
 import type { AppointmentDoc } from "../appointment/appointment.types";
 import { countBy, countByMonth, workloadByStaff } from "./report.helpers";
 
 // Raw counts for the Dashboard and Reports pages. The frontend turns them into charts.
-// Only names, IDs and dates are loaded, never remarks or notes.
+// Only names, IDs and dates are returned, never remarks or notes.
 
-const CASE_FIELDS = [
-  "caseNumber",
-  "intakeDate",
-  "learnerName",
-  "gradeSection",
-  "concern",
-  "referredTo",
-  "classification",
-  "followUpDate",
-  "status",
-] as const;
 const APPOINTMENT_FIELDS = ["appointmentId", "studentName", "staff", "date", "time", "status"] as const;
 
-type CaseSummary = Pick<CaseDoc, (typeof CASE_FIELDS)[number]> & { id: string };
+type CaseSummary = Omit<CaseInput, "remarks"> & { id: string; caseNumber: string };
 type AppointmentSummary = Pick<AppointmentDoc, (typeof APPOINTMENT_FIELDS)[number]> & { id: string };
 
+// Cases are encrypted, so they are decrypted here; remarks are dropped right away.
 async function loadCases(userId: string): Promise<CaseSummary[]> {
-  const snapshot = await userCollection(userId, "cases").select(...CASE_FIELDS).get();
-  return snapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Omit<CaseSummary, "id">) }));
+  const snapshot = await userCollection(userId, "cases").get();
+  return snapshot.docs.map((doc) => {
+    const raw = doc.data() as CaseDoc | LegacyCaseDoc;
+    const { remarks: _remarks, ...fields } = decryptCase(raw);
+    return { id: doc.id, caseNumber: raw.caseNumber, ...fields };
+  });
 }
 
 async function loadAppointments(userId: string): Promise<AppointmentSummary[]> {

@@ -1,6 +1,6 @@
 import { getExtension, uploadSingle } from "../../middlewares/upload.middleware";
 
-export const MAX_FILE_SIZE_MB = 25; // same as the frontend
+export const MAX_FILE_SIZE_MB = 50; // documents, same as the frontend. Images: 10 MB (see upload.middleware)
 
 // Allowed extensions and the content type we send back on download.
 // We never trust the browser's content type.

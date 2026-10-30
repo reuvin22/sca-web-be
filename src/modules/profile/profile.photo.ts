@@ -1,6 +1,6 @@
-import { uploadSingle } from "../../middlewares/upload.middleware";
+import { IMAGE_MAX_SIZE_MB, uploadSingle } from "../../middlewares/upload.middleware";
 
-export const PHOTO_MAX_SIZE_MB = 2; // same as the frontend
+export const PHOTO_MAX_SIZE_MB = IMAGE_MAX_SIZE_MB; // 10 MB, same as the frontend
 
 // Allowed profile photo types (extension -> content type sent back when viewing)
 export const PHOTO_TYPES: Record<string, string> = {
