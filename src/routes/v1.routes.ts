@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { requireAuth } from "../middlewares/auth.middleware";
+import { userLimiter } from "../middlewares/rateLimit.middleware";
 import appointmentRoutes from "../modules/appointment/appointment.routes";
 import authRoutes from "../modules/auth/auth.routes";
 import caseRoutes from "../modules/case/case.routes";
@@ -23,6 +24,7 @@ router.use("/auth", authRoutes);
 
 // Everything below needs a signed-in user
 router.use(requireAuth);
+router.use(userLimiter); // per user
 router.use("/profile", profileRoutes);
 router.use("/students", studentRoutes);
 router.use("/cases", caseRoutes);

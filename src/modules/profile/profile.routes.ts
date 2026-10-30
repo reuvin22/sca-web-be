@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { uploadLimiter } from "../../middlewares/rateLimit.middleware";
 import { validate } from "../../middlewares/validate.middleware";
 import * as profileController from "./profile.controller";
 import { uploadProfilePhoto } from "./profile.photo";
@@ -11,7 +12,7 @@ router.put("/", validate({ body: updateProfileSchema }), profileController.updat
 
 // Profile picture: multipart/form-data field "photo" (PNG, JPG or WEBP, max 10 MB)
 router.get("/photo", profileController.getPhoto);
-router.post("/photo", uploadProfilePhoto, profileController.uploadPhoto);
+router.post("/photo", uploadLimiter, uploadProfilePhoto, profileController.uploadPhoto);
 router.delete("/photo", profileController.deletePhoto);
 
 export default router;

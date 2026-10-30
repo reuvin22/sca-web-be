@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { supportLimiter } from "../../middlewares/rateLimit.middleware";
 import { requireRole } from "../../middlewares/role.middleware";
 import { validate } from "../../middlewares/validate.middleware";
 import { uploadMedia } from "../../utils/attachments";
@@ -10,7 +11,7 @@ const router = Router();
 
 // Any signed-in user: multipart/form-data with type, subject, description, severity (bugs)
 // and up to 6 "media" files (images/videos, bugs only)
-router.post("/", uploadMedia, validate({ body: supportRequestSchema }), supportController.createSupportRequest);
+router.post("/", supportLimiter, uploadMedia, validate({ body: supportRequestSchema }), supportController.createSupportRequest);
 
 // Developers only: the Reports Kanban board
 const devOnly = requireRole("dev");
