@@ -15,6 +15,7 @@ A list of every field that is encrypted or hashed. Check it to confirm the right
 | `users/{id}/cases/{id}` | remarks | Encrypt | AES-256-GCM | Confidential counseling remarks | 2026-10-30 |
 | `users/{id}/appointments/{id}` | notes | Encrypt | AES-256-GCM | Confidential appointment notes | 2026-10-30 |
 | R2 object (`files/{id}.storageKey`) | file content | Encrypt | AES-256-GCM (binary) | Uploaded documents may contain student records | 2026-10-30 |
+| R2 object (`users/{id}.photo.storageKey`) | profile photo | Encrypt | AES-256-GCM (binary) | Personal photo | 2026-10-30 |
 
 ## Fields to Review
 

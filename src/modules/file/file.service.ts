@@ -1,15 +1,13 @@
-import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import type { DocumentSnapshot } from "firebase-admin/firestore";
 import crypto from "node:crypto";
 import path from "node:path";
-import { R2_BUCKET, r2 } from "../../config/r2";
-import { ApiError } from "../../utils/apiError";
+import { getExtension } from "../../middlewares/upload.middleware";
 import { recordAudit } from "../../utils/audit";
 import { nowIso } from "../../utils/date";
-import { decryptBuffer, encryptBuffer } from "../../utils/encryption";
 import { dataOrNotFound, includesText, paginate, userCollection } from "../../utils/firestore";
+import { deleteObject, readEncryptedObject, saveEncryptedObject } from "../../utils/storage";
 import type { FileDoc, FileQuery, UploadedFile } from "./file.types";
-import { ALLOWED_TYPES, getExtension, isFileKind } from "./file.upload";
+import { ALLOWED_TYPES, isFileKind } from "./file.upload";
 
 const files = (userId: string) => userCollection(userId, "files");
 
@@ -37,7 +35,7 @@ export async function listFiles(userId: string, { page, limit, search, kind }: F
 export async function uploadFile(userId: string, upload: UploadedFile) {
   // A random key, so a user's file name never becomes part of the storage path
   const storageKey = `${userId}/${crypto.randomUUID()}`;
-  await r2.send(new PutObjectCommand({ Bucket: R2_BUCKET, Key: storageKey, Body: encryptBuffer(upload.buffer) }));
+  await saveEncryptedObject(storageKey, upload.buffer);
 
   const file: FileDoc = {
     name: path.basename(upload.originalname).slice(0, 255),
@@ -58,17 +56,14 @@ async function getFileDoc(userId: string, id: string) {
 
 export async function downloadFile(userId: string, id: string) {
   const { file } = await getFileDoc(userId, id);
-  const object = await r2.send(new GetObjectCommand({ Bucket: R2_BUCKET, Key: file.storageKey }));
-  if (!object.Body) throw new ApiError(404, "File not found");
-
-  const content = decryptBuffer(Buffer.from(await object.Body.transformToByteArray()));
+  const content = await readEncryptedObject(file.storageKey);
   await recordAudit(userId, "download", "file", id);
   return { name: file.name, mimeType: file.mimeType, content };
 }
 
 export async function deleteFile(userId: string, id: string) {
   const { ref, file } = await getFileDoc(userId, id);
-  await r2.send(new DeleteObjectCommand({ Bucket: R2_BUCKET, Key: file.storageKey }));
+  await deleteObject(file.storageKey);
   await ref.delete();
   await recordAudit(userId, "delete", "file", id);
 }

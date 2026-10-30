@@ -14,5 +14,13 @@ export interface UserDoc {
   phone: string | null; // AES-256-GCM encrypted
   emailVerifiedAt: string | null;
   school: School;
+  photo?: ProfilePhoto | null; // missing on accounts that never uploaded one
   createdAt: string;
+}
+
+// Profile picture stored (encrypted) in R2
+export interface ProfilePhoto {
+  storageKey: string;
+  mimeType: string;
+  updatedAt: string;
 }
