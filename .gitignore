@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.env
+*.log
+uploads/
+
+API.md
+CLAUDE.md
+ENCRYPTED_DATA
+.node_modules
+firestore.rules
+firebase.json
+sca.json

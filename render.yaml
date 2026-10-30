@@ -1,0 +1,47 @@
+# Render Blueprint for the SCA backend.
+# Render dashboard > New > Blueprint > pick this repo. See DEPLOYMENT.md for the full steps.
+services:
+  - type: web
+    name: sca-be
+    runtime: node
+    region: singapore # closest Render region to the Philippines
+    plan: free # free sleeps after 15 min idle (slow first request). Use "starter" or higher for production.
+    # TypeScript is a devDependency, so include dev packages for the build.
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      - key: CACHE_TTL_SECONDS
+        value: "60"
+      - key: JWT_EXPIRES_IN
+        value: 1d
+      # Upload sca.json as a Secret File named "sca.json" (Environment > Secret Files)
+      - key: FIREBASE_SERVICE_ACCOUNT_PATH
+        value: /etc/secrets/sca.json
+      - key: BREVO_SENDER_NAME
+        value: SCA System
+
+      # Secrets: Render asks for these when the Blueprint is created (never committed)
+      - key: CLIENT_URL # deployed frontend URL, e.g. https://sca-fe.vercel.app (no trailing slash)
+        sync: false
+      - key: ENCRYPTION_KEY # copy from your local .env. Changing it makes existing encrypted data unreadable.
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: BREVO_API_KEY
+        sync: false
+      - key: BREVO_SENDER_EMAIL
+        sync: false
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET
+        sync: false
