@@ -58,3 +58,9 @@ export function decryptBuffer(stored: Buffer): Buffer {
   decipher.setAuthTag(authTag);
   return Buffer.concat([decipher.update(stored.subarray(IV_LENGTH + 16)), decipher.final()]);
 }
+
+// One-way keyed hash (HMAC-SHA256) of a value that is stored encrypted, so it can still be
+// looked up or checked for duplicates (encrypted values differ every time). Not reversible.
+export function lookupHash(value: string): string {
+  return crypto.createHmac("sha256", KEY).update(value).digest("hex");
+}

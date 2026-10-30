@@ -1,5 +1,6 @@
 import { getExtension } from "../../middlewares/upload.middleware";
-import { roleOf } from "../../utils/roles";
+import { rolesOf } from "../../utils/roles";
+import { decryptAddress, encryptAddress, phoneHash } from "../../utils/address";
 import { ApiError } from "../../utils/apiError";
 import { nowIso } from "../../utils/date";
 import { decryptOptional, encryptOptional } from "../../utils/encryption";
@@ -30,8 +31,9 @@ function toProfile(id: string, user: UserDoc) {
       email: user.email,
       role: user.role,
       phone: decryptOptional(user.phone),
+      address: decryptAddress(user.address), // null until set
       photoUpdatedAt: user.photo?.updatedAt ?? null,
-      accessRole: roleOf(user),
+      accessRoles: rolesOf(user),
     },
     school: { ...EMPTY_SCHOOL, ...user.school },
   };
@@ -47,6 +49,11 @@ export async function updateProfile(userId: string, { user, school }: UpdateProf
   if (sameEmail.docs.some((doc) => doc.id !== userId)) {
     throw new ApiError(409, "An account with this email already exists");
   }
+  const hash = phoneHash(user.phone);
+  const samePhone = await usersCollection.where("phoneHash", "==", hash).limit(2).get();
+  if (samePhone.docs.some((doc) => doc.id !== userId)) {
+    throw new ApiError(409, "An account with this mobile number already exists");
+  }
 
   const ref = usersCollection.doc(userId);
   await ref.update({
@@ -54,6 +61,8 @@ export async function updateProfile(userId: string, { user, school }: UpdateProf
     email: user.email,
     role: user.role,
     phone: encryptOptional(user.phone),
+    phoneHash: hash,
+    address: encryptAddress(user.address),
     school,
   });
   return getProfile(userId);

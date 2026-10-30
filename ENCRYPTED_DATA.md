@@ -10,6 +10,8 @@ A list of every field that is encrypted or hashed. Check it to confirm the right
 |----------------|-------|--------|-----------|--------|------------|
 | `users/{id}` | password | Hash | bcrypt (12 rounds) | Login credential | 2026-10-30 |
 | `users/{id}` | phone | Encrypt | AES-256-GCM | Personal contact info | 2026-10-30 |
+| `users/{id}` | phoneHash | Hash | HMAC-SHA256 (ENCRYPTION_KEY) | Finds duplicate mobile numbers without decrypting. Not reversible. | 2026-10-30 |
+| `users/{id}` | address (region, province, city, barangay, street) | Encrypt | AES-256-GCM (JSON) | Home address | 2026-10-30 |
 | `authTokens/{id}` | document id | Hash | SHA-256 | Email verification / password reset link token. The raw token only exists in the email. | 2026-10-30 |
 | `users/{id}/students/{id}` | details | Encrypt | AES-256-GCM (JSON) | Student personal details: birthday, LRN, address, contact numbers, guardian and emergency contacts, interests, help requested, parent concerns, guidance review and remarks | 2026-10-30 |
 | `users/{id}/cases/{id}` | data (learner name, grade & section, concern, action, referred to, classification, intake date, follow-up date, status, remarks) | Encrypt | AES-256-GCM (JSON) | Confidential case record. Only the case number and created/updated times stay plain. Older cases: run `npm run db:encrypt-cases` once. | 2026-10-30 |

@@ -2,8 +2,10 @@ import { db, firebaseAuth } from "../../config/firebase";
 import { ApiError } from "../../utils/apiError";
 import { nowIso } from "../../utils/date";
 import { userCollection, usersCollection } from "../../utils/firestore";
+import { encryptAddress, phoneHash } from "../../utils/address";
+import { encrypt } from "../../utils/encryption";
 import { signAccessToken } from "../../utils/jwt";
-import { DEFAULT_ACCESS_ROLE, type AccessRole } from "../../utils/roles";
+import { DEFAULT_ACCESS_ROLE, hasRole, withRole, type AccessRole } from "../../utils/roles";
 import { comparePassword, hashPassword } from "../../utils/password";
 import { DEFAULT_CATEGORIES } from "../category/category.defaults";
 import { EMPTY_SCHOOL } from "../profile/profile.service";
@@ -14,6 +16,9 @@ import type { GoogleLoginInput, LoginInput, RegisterDeveloperInput, RegisterInpu
 
 type NewAccount = Pick<UserDoc, "name" | "email" | "password" | "firebaseUid" | "emailVerifiedAt"> & {
   accessRole?: AccessRole; // defaults to sca-1; invited developers get "dev"
+  phone?: string | null; // already encrypted (from the registration form)
+  phoneHash?: string | null; // to block a second account with the same number
+  address?: string | null; // already encrypted (from the registration form)
 };
 
 async function findUserByEmail(email: string) {
@@ -23,19 +28,26 @@ async function findUserByEmail(email: string) {
 }
 
 // Creates the user with an empty school profile and the default Settings categories.
-// Runs in a transaction so two sign-ups with the same email can't both succeed.
+// Runs in a transaction so two sign-ups with the same email or mobile number can't both succeed.
 export async function createAccount(account: NewAccount) {
   const userRef = usersCollection.doc();
 
   await db.runTransaction(async (transaction) => {
     const existing = await transaction.get(usersCollection.where("email", "==", account.email).limit(1));
     if (!existing.empty) throw new ApiError(409, "An account with this email already exists");
+    if (account.phoneHash) {
+      const samePhone = await transaction.get(usersCollection.where("phoneHash", "==", account.phoneHash).limit(1));
+      if (!samePhone.empty) throw new ApiError(409, "An account with this mobile number already exists");
+    }
 
+    const { accessRole, ...details } = account;
     const user: UserDoc = {
-      ...account,
-      accessRole: account.accessRole ?? DEFAULT_ACCESS_ROLE,
-      role: account.accessRole === "dev" ? "Developer" : "School Counselor Associate",
-      phone: null,
+      ...details,
+      accessRoles: [accessRole ?? DEFAULT_ACCESS_ROLE],
+      role: accessRole === "dev" ? "Developer" : "School Counselor Associate",
+      phone: account.phone ?? null,
+      phoneHash: account.phoneHash ?? null,
+      address: account.address ?? null,
       school: EMPTY_SCHOOL,
       createdAt: nowIso(),
     };
@@ -64,6 +76,9 @@ export async function register(input: RegisterInput) {
     password: await hashPassword(input.password),
     firebaseUid: null,
     emailVerifiedAt: null,
+    phone: encrypt(input.phone),
+    phoneHash: phoneHash(input.phone),
+    address: encryptAddress(input.address),
   });
 
   // The account already exists, so a failed email shouldn't fail sign-up.
@@ -157,8 +172,18 @@ export function getInvitation(token: string) {
 
 // Creates a developer account from an invitation. The invitation proves the email, so it is verified.
 // The invitation is used up only after the account exists, so a failed sign-up can be retried.
+// If the email already has an account (it registered after the invite was sent), that account
+// just gets the dev role instead of a second account.
 export async function registerDeveloper({ token, fullName, password }: RegisterDeveloperInput) {
   const { email } = await peekInvitation(token);
+  const existing = await findUserByEmail(email);
+  if (existing) {
+    if (!hasRole(existing, "dev")) {
+      await usersCollection.doc(existing.id).update({ accessRoles: withRole(existing, "dev") });
+    }
+    await consumeInvitation(token);
+    throw new ApiError(409, "You already have an account, so the developer role was added to it. Please sign in.");
+  }
   const user = await createAccount({
     name: fullName,
     email,

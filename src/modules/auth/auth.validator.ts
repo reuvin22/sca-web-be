@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { addressSchema, mobileSchema } from "../../utils/address";
 
 const email = z.email().trim().toLowerCase().max(255);
 // bcrypt only uses the first 72 bytes, so longer passwords are rejected.
@@ -8,6 +9,8 @@ export const registerSchema = z.object({
   fullName: z.string().trim().min(2).max(100),
   email,
   password,
+  phone: mobileSchema,
+  address: addressSchema,
 });
 
 export const loginSchema = z.object({
