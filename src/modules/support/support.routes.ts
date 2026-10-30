@@ -15,6 +15,7 @@ router.post("/", uploadMedia, validate({ body: supportRequestSchema }), supportC
 // Developers only: the Reports Kanban board
 const devOnly = requireRole("dev");
 router.get("/board", devOnly, validate({ query: boardQuerySchema }), supportController.listBoard);
+router.get("/:id", devOnly, validate({ params: idParamsSchema }), supportController.getReport);
 router.patch("/:id", devOnly, validate({ params: idParamsSchema, body: updateReportSchema }), supportController.updateReport);
 router.get(
   "/:id/attachments/:index",

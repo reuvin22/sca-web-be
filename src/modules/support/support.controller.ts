@@ -19,6 +19,10 @@ export async function updateReport(req: Request<IdParams, unknown, UpdateReportI
   sendSuccess(res, await supportService.updateReport(req.params.id, req.body));
 }
 
+export async function getReport(req: Request<IdParams>, res: Response) {
+  sendSuccess(res, await supportService.getReport(req.params.id));
+}
+
 export async function getAttachment(req: Request, res: Response) {
   const { id, index } = req.params as unknown as AttachmentParams;
   const { mimeType, content } = await supportService.getAttachment(id, index);

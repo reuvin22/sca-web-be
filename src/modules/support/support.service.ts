@@ -92,6 +92,13 @@ export async function updateReport(id: string, input: UpdateReportInput) {
   return toReport(await ref.get(), team);
 }
 
+// One report with everything developers see on the board (e.g. a feature request opened from Feature Review)
+export async function getReport(id: string) {
+  const [doc, team] = await Promise.all([supportCollection.doc(id).get(), teamService.listDevelopers()]);
+  dataOrNotFound(doc, "Report");
+  return toReport(doc, team);
+}
+
 export async function getAttachment(id: string, index: number) {
   const report = dataOrNotFound<SupportRequestDoc>(await supportCollection.doc(id).get(), "Report");
   return readAttachment(report.attachments, index);
