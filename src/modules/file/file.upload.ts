@@ -21,6 +21,18 @@ export const ALLOWED_TYPES: Record<string, string> = {
 
 export const getExtension = (fileName: string) => path.extname(fileName).toLowerCase();
 
+// File type groups for the Files page filter (same labels as the frontend)
+export const FILE_KINDS = {
+  PDF: [".pdf"],
+  Excel: [".xls", ".xlsx"],
+  CSV: [".csv"],
+  PowerPoint: [".ppt", ".pptx"],
+  Image: [".png", ".jpg", ".jpeg"],
+};
+
+export const isFileKind = (fileName: string, kind: keyof typeof FILE_KINDS) =>
+  FILE_KINDS[kind].includes(getExtension(fileName));
+
 // Keeps the file in memory so it can be encrypted before it is written to disk.
 const upload = multer({
   storage: multer.memoryStorage(),

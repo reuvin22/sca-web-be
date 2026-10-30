@@ -9,7 +9,7 @@ import { nowIso } from "../../utils/date";
 import { decryptBuffer, encryptBuffer } from "../../utils/encryption";
 import { dataOrNotFound, includesText, paginate, userCollection } from "../../utils/firestore";
 import type { FileDoc, FileQuery, UploadedFile } from "./file.types";
-import { ALLOWED_TYPES, getExtension } from "./file.upload";
+import { ALLOWED_TYPES, getExtension, isFileKind } from "./file.upload";
 
 const files = (userId: string) => userCollection(userId, "files");
 
@@ -19,9 +19,12 @@ function toFile(doc: DocumentSnapshot) {
   return { id: doc.id, name, size, mimeType, uploadedAt: createdAt.slice(0, 10) };
 }
 
-// Newest first. Name search runs after the query (see paginate).
-export async function listFiles(userId: string, { page, limit, search }: FileQuery) {
-  const nameMatches = search ? (item: { name: string }) => includesText(item.name, search) : undefined;
+// Newest first. Name search and type filter run after the query (see paginate).
+export async function listFiles(userId: string, { page, limit, search, kind }: FileQuery) {
+  const nameMatches =
+    search || kind
+      ? (item: { name: string }) => includesText(item.name, search) && (!kind || isFileKind(item.name, kind))
+      : undefined;
   const { items, pagination } = await paginate(
     files(userId).orderBy("createdAt", "desc"),
     { page, limit },

@@ -71,12 +71,13 @@ export async function getDashboard(userId: string) {
       .filter((item) => item.followUpDate >= today && getCaseStatus(item) !== "accomplished")
       .sort((a, b) => a.followUpDate.localeCompare(b.followUpDate))
       .slice(0, 5)
-      .map(({ id, caseNumber, learnerName, gradeSection, followUpDate }) => ({
+      .map(({ id, caseNumber, learnerName, gradeSection, followUpDate, status }) => ({
         id,
         caseNumber,
         learnerName,
         gradeSection,
         followUpDate,
+        status,
       })),
   };
 }
@@ -84,9 +85,17 @@ export async function getDashboard(userId: string) {
 export async function getSummary(userId: string) {
   const [cases, appointments] = await Promise.all([loadCases(userId), loadAppointments(userId)]);
   const completed = cases.filter((item) => getCaseStatus(item) === "accomplished").length;
+  const appointmentCount = (status: string) => appointments.filter((item) => item.status === status).length;
 
   return {
     cases: { total: cases.length, completed, pending: cases.length - completed },
+    appointmentStatus: {
+      total: appointments.length,
+      scheduled: appointmentCount("scheduled"),
+      completed: appointmentCount("completed"),
+      cancelled: appointmentCount("cancelled"),
+      noShow: appointmentCount("no-show"),
+    },
     appointmentsByMonth: countByMonth(appointments.map((item) => item.date)),
     referrals: countBy(cases.filter(isReferred), (item) => item.referredTo),
     workload: workloadByStaff(appointments),
