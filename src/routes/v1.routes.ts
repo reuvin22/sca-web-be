@@ -8,6 +8,7 @@ import categoryRoutes from "../modules/category/category.routes";
 import featureRoutes from "../modules/feature/feature.routes";
 import fileRoutes from "../modules/file/file.routes";
 import formRoutes from "../modules/form/form.routes";
+import documentRoutes from "../modules/document/document.routes";
 import publicFormRoutes from "../modules/form/form.public.routes";
 import notificationRoutes from "../modules/notification/notification.routes";
 import profileRoutes from "../modules/profile/profile.routes";
@@ -36,6 +37,7 @@ router.use("/categories", categoryRoutes);
 router.use("/todo", todoRoutes);
 router.use("/files", fileRoutes);
 router.use("/forms", formRoutes);
+router.use("/documents", documentRoutes); // Document Storage (PDF editor)
 router.use("/support", supportRoutes); // sending: everyone; board: developers
 router.use("/features", featureRoutes); // feature requests list + voting: everyone
 router.use("/reports", reportRoutes);

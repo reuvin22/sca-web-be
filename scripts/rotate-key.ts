@@ -21,7 +21,7 @@ import { readEncryptedObject, saveEncryptedObject } from "../src/utils/storage";
 const DRY_RUN = process.argv.includes("--dry-run");
 const BATCH_SIZE = 400;
 
-const USER_COLLECTIONS = ["students", "cases", "appointments", "files", "categories", "todo", "forms"];
+const USER_COLLECTIONS = ["students", "cases", "appointments", "files", "categories", "todo", "forms", "documents"];
 const TOP_COLLECTIONS = ["supportRequests", "updates", "authTokens"];
 
 // Every encrypted string anywhere in the value, re-encrypted with the current key

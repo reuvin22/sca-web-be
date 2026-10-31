@@ -20,6 +20,10 @@ A list of every field that is encrypted or hashed. Check it to confirm the right
 | `users/{id}/categories/{id}` | data (name, options) | Encrypt | AES-256-GCM (JSON) | Settings dropdown values (e.g. staff names, grade sections). Only the created time stays plain. | 2026-10-30 |
 | `users/{id}/todo/board` | data (columns and cards) | Encrypt | AES-256-GCM (JSON) | To Do cards can mention students | 2026-10-30 |
 | `users/{id}/forms/{id}` | data (title, description, header, questions) | Encrypt | AES-256-GCM (JSON) | Forms can name students or concerns. Only created/updated times stay plain. | 2026-10-30 |
+| `users/{id}/forms/{id}` | pending (unsaved changes of a saved form) | Encrypt | AES-256-GCM (JSON) | Same content as the form | 2026-10-31 |
+| `users/{id}/documents/{id}` | data (name, draft flag, page count, storage keys) | Encrypt | AES-256-GCM (JSON) | Document names can name students. Only created/updated times stay plain. | 2026-10-31 |
+| R2 object (`documents/{id}` project) | editable project (pages and everything added to them) | Encrypt | AES-256-GCM (binary) | Added text, signatures and pictures can be personal | 2026-10-31 |
+| R2 object (`documents/{id}` source) | original PDF | Encrypt | AES-256-GCM (binary) | Uploaded documents may contain student records | 2026-10-31 |
 | `users/{id}/forms/{id}` | link (public answer link code) | Encrypt | AES-256-GCM | Anyone with the code can answer the form | 2026-10-31 |
 | `users/{id}/forms/{id}/responses/{id}` | data (each answer with its question) | Encrypt | AES-256-GCM (JSON) | Answers can be personal (names, feelings, family). Only the submitted time stays plain. | 2026-10-31 |
 | `formLinks/{id}` | document id | Hash | SHA-256 of the link code | Finds the form from a public link without storing the code | 2026-10-31 |
@@ -52,6 +56,7 @@ No personal or record data is stored in plain text. These system fields stay pla
 - **Ids and references**: document ids, `reporterId`, `assigneeId`, `authorId`, `reportId`, `updateId`, `firebaseUid`, generated numbers (case number, record ID, appointment ID).
 - **Access and status**: `accessRoles`, `tokenVersion`, `revokedSessions` (session ids), report `type`/`status`/`review`, `voterIds`/`votes`.
 - **Times**: `createdAt`, `updatedAt`, `emailVerifiedAt`, `publishedAt`, `doneAt`, `expiresAt`, `submittedAt`.
+- **Form status**: `status` ("draft" for a form never saved yet).
 - **Form counters and links**: `exports.pdf` / `exports.word` (how many times a form was downloaded), and `formLinks` `userId` / `formId` (which form a public link opens).
 - **Activity log** (`users/{id}/auditLogs`): action, record type, record id and time — never the record's content.
 - **Read markers**: `readUpdateIds`, `readNotificationIds` (ids only).

@@ -39,6 +39,7 @@ export async function getSummary(userId: string, formId: string) {
 export async function createLink(userId: string, formId: string) {
   const ref = formRef(userId, formId);
   const form = await readFormDoc(ref);
+  if (form.status === "draft") throw new ApiError(400, "Save the form before sharing it.");
   if (form.link) return { code: decrypt(form.link) };
 
   const code = crypto.randomBytes(18).toString("base64url");

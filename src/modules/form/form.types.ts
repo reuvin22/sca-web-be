@@ -8,6 +8,8 @@ export type FormQuery = z.infer<typeof formQuerySchema>;
 export interface FormDoc {
   data: string; // AES-256-GCM encrypted JSON (FormInput: title, description, header, questions)
   link?: string | null; // AES-256-GCM encrypted code of the public answer link (null when turned off)
+  status?: "draft"; // a new form left before it was ever saved (no answer link until saved)
+  pending?: string | null; // AES-256-GCM encrypted FormInput: unsaved changes to a saved form
   exports?: { pdf?: number; word?: number }; // how many times the form was exported
   createdAt: string;
   updatedAt: string;

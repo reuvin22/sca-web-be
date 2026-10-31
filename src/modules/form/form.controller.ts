@@ -21,6 +21,19 @@ export async function createForm(req: Request<object, unknown, FormInput>, res: 
   sendSuccess(res, await formService.createForm(getUserId(req), req.body), 201);
 }
 
+export async function saveNewDraft(req: Request<object, unknown, FormInput>, res: Response) {
+  sendSuccess(res, await formService.saveDraft(getUserId(req), null, req.body), 201);
+}
+
+export async function saveDraft(req: Request<IdParams, unknown, FormInput>, res: Response) {
+  sendSuccess(res, await formService.saveDraft(getUserId(req), req.params.id, req.body));
+}
+
+export async function discardPending(req: Request<IdParams>, res: Response) {
+  await formService.discardPending(getUserId(req), req.params.id);
+  res.status(204).send();
+}
+
 export async function updateForm(req: Request<IdParams, unknown, FormInput>, res: Response) {
   sendSuccess(res, await formService.updateForm(getUserId(req), req.params.id, req.body));
 }

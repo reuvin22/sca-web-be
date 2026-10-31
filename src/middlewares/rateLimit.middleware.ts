@@ -147,3 +147,13 @@ export const formAnswerLimiter = limiter({
   shared: true,
   message: "You've sent several answers already. Please wait 10 minutes before sending another.",
 });
+
+// Saving PDF documents (including drafts kept automatically), per user
+export const documentLimiter = limiter({
+  name: "document",
+  minutes: 10,
+  max: 30,
+  byUser: true,
+  shared: true,
+  message: "You've saved many documents in a short time. Please wait a few minutes and try again.",
+});

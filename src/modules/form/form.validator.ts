@@ -27,36 +27,46 @@ export const QUESTION_TYPES = [
 // Types where the form creator types the choices
 export const OPTION_TYPES: readonly string[] = ["select", "radio", "checkbox"];
 
-const questionSchema = z
-  .object({
+// `draft`: unfinished forms may have empty labels and choices (checked again when saved)
+const questionSchema = (draft: boolean) =>
+  z.object({
     id: z.string().trim().min(1).max(50),
-    label: requiredText(500),
+    label: draft ? optionalText(500) : requiredText(500),
     type: z.enum(QUESTION_TYPES),
     required: z.boolean().default(false),
-    options: z.array(requiredText(200)).max(50).default([]),
+    options: z.array(draft ? optionalText(200) : requiredText(200)).max(50).default([]),
     // How radio buttons / checkboxes are shown: in a row that wraps (flex) or in columns (grid)
     layout: z.enum(["flex", "grid"]).default("flex"),
     columns: z.number().int().min(2).max(4).default(2),
     // Share of the row: fields with smaller widths sit side by side (like "Full name ... Date")
     width: z.enum(["full", "two-thirds", "half", "third"]).default("full"),
     // Short answer split into labeled blanks, e.g. First / Middle / Last
-    parts: z.array(requiredText(100)).max(6).default([]),
+    parts: z.array(draft ? optionalText(100) : requiredText(100)).max(6).default([]),
     // Preset fields (Name, Section, Date...) so answers can be matched to students later
     variable: optionalText(50),
-  })
-  .refine((question) => !OPTION_TYPES.includes(question.type) || question.options.length > 0, {
-    message: "Add at least one option",
-    path: ["options"],
   });
+
+const savedQuestion = questionSchema(false).refine(
+  (question) => !OPTION_TYPES.includes(question.type) || question.options.length > 0,
+  { message: "Add at least one option", path: ["options"] },
+);
 
 // Used for both create (POST) and full update (PUT)
 export const formSchema = z.object({
   title: requiredText(150),
   description: optionalText(1000),
   // Student details at the top (Name, Date, Grade & Section...): printed as a grid, not numbered
-  header: z.array(questionSchema).max(30).default([]),
+  header: z.array(savedQuestion).max(30).default([]),
   // Numbered questions below the header
-  questions: z.array(questionSchema).max(100).default([]),
+  questions: z.array(savedQuestion).max(100).default([]),
+});
+
+// Unfinished form kept when the user leaves the builder without saving (same limits, nothing required)
+export const formDraftSchema = z.object({
+  title: optionalText(150),
+  description: optionalText(1000),
+  header: z.array(questionSchema(true)).max(30).default([]),
+  questions: z.array(questionSchema(true)).max(100).default([]),
 });
 
 // ?search=&page=&limit=
