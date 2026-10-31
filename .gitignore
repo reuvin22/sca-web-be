@@ -12,3 +12,6 @@ firestore.rules
 firebase.json
 sca.json
 docs/
+DEPLOYMENT.md
+ENCRYPTED_DATA.md
+CLAUDE.md
