@@ -4,7 +4,7 @@ import { nowIso } from "../../utils/date";
 import { userCollection, usersCollection } from "../../utils/firestore";
 import { encryptAddress, phoneHash } from "../../utils/address";
 import { encrypt } from "../../utils/encryption";
-import { signAccessToken, type TokenPayload } from "../../utils/jwt";
+import { signAccessToken, signDeviceToken, verifyDeviceToken, type TokenPayload } from "../../utils/jwt";
 import { sendEmail } from "../../utils/mailer";
 import { DEFAULT_ACCESS_ROLE, hasRole, withRole, type AccessRole } from "../../utils/roles";
 import { comparePassword, hashPassword } from "../../utils/password";
@@ -14,7 +14,7 @@ import { toCategoryDoc } from "../category/category.service";
 import * as profileService from "../profile/profile.service";
 import type { UserDoc } from "../profile/profile.types";
 import { EMPTY_SCHOOL, emailQueries, encodeNewUser, findUserByEmail, getUserInfo } from "../profile/profile.user";
-import { accountExistsEmail, phoneInUseEmail } from "./auth.email";
+import { accountExistsEmail } from "./auth.email";
 import { getTokenVersion, revokeAllSessions, revokeSession } from "./auth.session";
 import {
   checkLoginCode,
@@ -98,7 +98,8 @@ const isDuplicate = (error: unknown, field: Duplicate["duplicate"]) =>
   error instanceof ApiError && (error.details as Duplicate | undefined)?.duplicate === field;
 
 // The response is the same whether or not the email is new, so the sign-up page never reveals
-// which emails or mobile numbers are registered. The email owner learns what happened by email.
+// which emails are registered (the owner learns what happened by email). A mobile number that
+// another account uses is shown as an error so the user can fix it right away.
 export async function register(input: RegisterInput) {
   const existing = await findUserByEmail(input.email);
   if (existing) {
@@ -128,10 +129,10 @@ export async function register(input: RegisterInput) {
     });
   } catch (error) {
     if (isDuplicate(error, "email")) return { email: input.email }; // signed up twice at the same moment
-    if (!isDuplicate(error, "phone")) throw error;
-    await sendEmail({ to: input.email, ...phoneInUseEmail(input.fullName, input.email) }).catch((emailError: unknown) =>
-      console.error("Sign-up email failed:", emailError),
-    );
+    if (isDuplicate(error, "phone")) {
+      throw new ApiError(409, "This mobile number is already used by another account. Please use a different number.");
+    }
+    throw error;
   }
   return { email: input.email };
 }
@@ -152,14 +153,21 @@ export async function login(input: LoginInput) {
   if (!user || !valid) throw new ApiError(401, "Invalid email or password");
   if (!user.raw.emailVerifiedAt) throw new ApiError(403, "Please confirm your email before signing in");
 
+  // This browser entered a code in the last day: skip the code step
+  const device = input.deviceToken ? verifyDeviceToken(input.deviceToken) : null;
+  if (device?.userId === user.id && device.tokenVersion === (await getTokenVersion(user.id))) {
+    return buildSession(user.id, "password");
+  }
+
   const challenge = await sendLoginCode(user);
   return { codeRequired: true, challenge, email: maskEmail(user.email) };
 }
 
-// Step 2 of password sign-in
+// Step 2 of password sign-in. Also returns a device token so this browser can skip the code for 1 day.
 export async function verifyLoginCode({ challenge, code }: LoginCodeInput) {
   const userId = await checkLoginCode(challenge, code);
-  return buildSession(userId, "password");
+  const session = await buildSession(userId, "password");
+  return { ...session, deviceToken: signDeviceToken(userId, await getTokenVersion(userId)) };
 }
 
 // A new code for the same sign-in (the old one stops working)

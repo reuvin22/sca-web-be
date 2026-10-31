@@ -240,26 +240,6 @@ export function accountExistsEmail(name: string, email: string): EmailContent {
   };
 }
 
-// Sign-up with a mobile number that another account already uses
-export function phoneInUseEmail(name: string, email: string): EmailContent {
-  const footnote = "If you didn't try to create an account, you can ignore this email.";
-
-  return {
-    subject: "We couldn't create your SCA account",
-    html: emailLayout({
-      preheader: "That mobile number is already registered.",
-      badge: "📱",
-      title: `Hi ${escapeHtml(name)}!`,
-      message: `We couldn't create an account for <strong style="color:#7c3aed;">${escapeHtml(email)}</strong> because the mobile number you entered is already used by another account. Please register again with your own mobile number, or sign in if you already have an account.`,
-      buttonLabel: "Register again",
-      link: `${env.CLIENT_URL}/register`,
-      note: "🔒 Each account needs its own email and mobile number.",
-      footnote,
-    }),
-    text: `Hi ${name}!\n\nWe couldn't create an account for ${email} because the mobile number is already used by another account. Register again: ${env.CLIENT_URL}/register\n\n${footnote}`,
-  };
-}
-
 // An existing account was invited to the developer team; it gets the role only after accepting
 export function acceptInvitationEmail(inviterName: string, email: string, link: string): EmailContent {
   const footnote = "This invitation expires in 72 hours. If you weren't expecting it, ignore this email and nothing changes.";

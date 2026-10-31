@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "db:encrypt-all": "tsx scripts/encrypt-all.ts",
     "db:rotate-key": "tsx scripts/rotate-key.ts",
+    "db:seed": "tsx scripts/seed-dummy.ts",
     "user:role": "tsx scripts/set-role.ts"
   },
   "author": "",

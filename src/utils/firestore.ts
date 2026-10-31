@@ -11,7 +11,8 @@ type UserCollectionName =
   | "files"
   | "supportRequests"
   | "auditLogs"
-  | "todo";
+  | "todo"
+  | "forms";
 
 export const usersCollection = db.collection("users");
 

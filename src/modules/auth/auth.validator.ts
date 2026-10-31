@@ -25,6 +25,8 @@ export const registerSchema = z.object({
 export const loginSchema = z.object({
   email,
   password: z.string().min(1).max(72),
+  // From a sign-in code entered on this browser in the last day (skips the code step)
+  deviceToken: z.string().max(1000).optional(),
 });
 
 // Second sign-in step: the code from the email, for the challenge returned by /auth/login

@@ -18,7 +18,7 @@ export type AuditAction =
   | "sign-out-all"
   | "password-reset"
   | "role-added";
-export type AuditEntity = "student" | "case" | "appointment" | "file" | "account";
+export type AuditEntity = "student" | "case" | "appointment" | "file" | "form" | "account";
 
 interface AuditLogDoc {
   action: AuditAction;

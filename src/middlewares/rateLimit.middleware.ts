@@ -130,3 +130,20 @@ export const inviteLimiter = limiter({
   shared: true,
   message: "Too many invitations sent. Please wait an hour and try again.",
 });
+
+// Public form links (no sign-in): opening a form, per IP
+export const publicFormLimiter = limiter({
+  name: "public-form",
+  minutes: 10,
+  max: 60,
+  message: "Too many requests. Please wait a few minutes and try again.",
+});
+
+// Public form links: sending answers, per IP (stops spam submissions)
+export const formAnswerLimiter = limiter({
+  name: "form-answer",
+  minutes: 10,
+  max: 10,
+  shared: true,
+  message: "You've sent several answers already. Please wait 10 minutes before sending another.",
+});

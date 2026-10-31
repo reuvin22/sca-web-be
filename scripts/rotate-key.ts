@@ -21,7 +21,7 @@ import { readEncryptedObject, saveEncryptedObject } from "../src/utils/storage";
 const DRY_RUN = process.argv.includes("--dry-run");
 const BATCH_SIZE = 400;
 
-const USER_COLLECTIONS = ["students", "cases", "appointments", "files", "categories", "todo"];
+const USER_COLLECTIONS = ["students", "cases", "appointments", "files", "categories", "todo", "forms"];
 const TOP_COLLECTIONS = ["supportRequests", "updates", "authTokens"];
 
 // Every encrypted string anywhere in the value, re-encrypted with the current key
@@ -68,6 +68,9 @@ async function rotateFirestore() {
     const docs = snapshot.docs.filter((doc) => doc.ref.parent.parent?.parent.id === "users");
     await rewrite(docs.map((doc) => ({ ref: doc.ref, data: doc.data() })), name);
   }
+  // Answers from public form links: users/{id}/forms/{id}/responses/{id}
+  const answers = (await db.collectionGroup("responses").get()).docs.filter((doc) => doc.ref.parent.parent?.parent.id === "forms");
+  await rewrite(answers.map((doc) => ({ ref: doc.ref, data: doc.data() })), "form responses");
   for (const name of TOP_COLLECTIONS) {
     const snapshot = await db.collection(name).get();
     // Sign-in codes last 10 minutes; they are simply removed (their hash used the old key)
