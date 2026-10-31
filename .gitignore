@@ -16,5 +16,5 @@ DEPLOYMENT.md
 ENCRYPTED_DATA.md
 CLAUDE.md
 
-.env-example
+.env.example
 firestore.indexes.json
