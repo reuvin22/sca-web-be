@@ -1,6 +1,8 @@
 // Categories every new account starts with. Names must match the frontend form labels
 // so those fields show as dropdowns.
 export const DEFAULT_CATEGORIES: { name: string; options: string[] }[] = [
+  // Students already served, so repeat cases and records pick the same name (filled in as names are added)
+  { name: "Student Name", options: [] },
   { name: "Sex", options: ["Male", "Female", "Not provided"] },
   { name: "Grade & Section", options: [] },
   {
