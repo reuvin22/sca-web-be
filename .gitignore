@@ -15,3 +15,5 @@ docs/
 DEPLOYMENT.md
 ENCRYPTED_DATA.md
 CLAUDE.md
+
+.env-example
