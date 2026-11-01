@@ -20,7 +20,6 @@ export const EMPTY_SCHOOL: School = {
   schoolYear: "",
   reportingMonth: "",
   schoolHead: "",
-  privacy: "",
 };
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase();

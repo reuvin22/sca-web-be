@@ -54,10 +54,8 @@ function toReport(doc: DocumentSnapshot, team: Developer[]) {
   };
 }
 
+// Bug reports and feature requests can both include images and videos (screenshots, mock-ups, recordings)
 export async function createSupportRequest(userId: string, input: SupportRequestInput, files: UploadedMedia[]) {
-  if (input.type !== "bug" && files.length > 0) {
-    throw new ApiError(400, "Images and videos can only be added to bug reports");
-  }
   const user = await getUserInfo(userId);
   const ref = supportCollection.doc();
   const now = nowIso();

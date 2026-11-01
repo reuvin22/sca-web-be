@@ -21,6 +21,5 @@ export const updateProfileSchema = z.object({
     schoolYear: requiredText(20),
     reportingMonth: requiredText(30),
     schoolHead: requiredText(100),
-    privacy: requiredText(100),
   }),
 });
