@@ -1,6 +1,7 @@
 import { usersCollection, userCollection } from "../../utils/firestore";
 import { decryptJson, encryptJson } from "../../utils/encryption";
 import { nowIso } from "../../utils/date";
+import { getUserInfo } from "../profile/profile.user";
 import { getCaseStatus } from "./case.status";
 import type { CaseInput, CaseStatus } from "./case.types";
 
@@ -30,6 +31,7 @@ export interface CaseChange {
 
 interface HistoryEntry {
   action: "created" | "updated";
+  by: string; // name of who did it, as it was then
   changes: CaseChange[];
   status: CaseStatus; // the case's status right after this action
 }
@@ -53,8 +55,10 @@ function changesBetween(before: CaseInput, after: CaseInput): CaseChange[] {
     });
 }
 
+const nameOf = async (userId: string) => (await getUserInfo(userId))?.name || "Unknown user";
+
 export async function recordCreated(userId: string, caseId: string, input: CaseInput) {
-  const entry: HistoryEntry = { action: "created", changes: [], status: getCaseStatus(input) };
+  const entry: HistoryEntry = { action: "created", by: await nameOf(userId), changes: [], status: getCaseStatus(input) };
   await history(userId, caseId).add({ data: encryptJson(entry), createdAt: nowIso() } satisfies HistoryDoc);
 }
 
@@ -62,20 +66,23 @@ export async function recordCreated(userId: string, caseId: string, input: CaseI
 export async function recordUpdated(userId: string, caseId: string, before: CaseInput, after: CaseInput) {
   const changes = changesBetween(before, after);
   if (!changes.length) return;
-  const entry: HistoryEntry = { action: "updated", changes, status: getCaseStatus(after) };
+  const entry: HistoryEntry = { action: "updated", by: await nameOf(userId), changes, status: getCaseStatus(after) };
   await history(userId, caseId).add({ data: encryptJson(entry), createdAt: nowIso() } satisfies HistoryDoc);
 }
 
 // Newest first. Cases saved before the history existed show their create / update times from the
 // activity log (without the field details).
 export async function listHistory(userId: string, caseId: string) {
-  const [saved, logs] = await Promise.all([
+  const [saved, logs, owner] = await Promise.all([
     history(userId, caseId).orderBy("createdAt", "desc").get(),
     usersCollection.doc(userId).collection("auditLogs").where("entityId", "==", caseId).get(),
+    nameOf(userId),
   ]);
   const entries = saved.docs.map((doc) => {
     const raw = doc.data() as HistoryDoc;
-    return { id: doc.id, createdAt: raw.createdAt, ...decryptJson<HistoryEntry>(raw.data) };
+    const entry = decryptJson<HistoryEntry>(raw.data);
+    // Entries saved before names were kept: the account owner made them
+    return { id: doc.id, createdAt: raw.createdAt, ...entry, by: entry.by || owner };
   });
   const oldest = entries.at(-1)?.createdAt ?? "9999";
   const earlier = logs.docs
@@ -85,6 +92,7 @@ export async function listHistory(userId: string, caseId: string) {
       id: log.id,
       createdAt: log.createdAt,
       action: log.action === "create" ? ("created" as const) : ("updated" as const),
+      by: owner,
       changes: [],
       status: null,
     }));
