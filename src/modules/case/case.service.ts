@@ -1,9 +1,11 @@
 import type { DocumentSnapshot } from "firebase-admin/firestore";
+import { db } from "../../config/firebase";
 import { recordAudit } from "../audit/audit.service";
 import { nowIso } from "../../utils/date";
 import { dataOrNotFound, inDateRange, includesText, paginate, userCollection } from "../../utils/firestore";
 import { generateCaseNumber } from "../../utils/token";
 import { decryptCase, encryptCase } from "./case.crypto";
+import { recordCreated, recordUpdated } from "./case.history";
 import { getCaseStatus } from "./case.status";
 import type { CaseDoc, CaseInput, CaseQuery, LegacyCaseDoc } from "./case.types";
 
@@ -42,6 +44,7 @@ export async function createCase(userId: string, input: CaseInput) {
   const now = nowIso();
   const caseDoc: CaseDoc = { caseNumber: generateCaseNumber(), data: encryptCase(input), createdAt: now, updatedAt: now };
   const ref = await cases(userId).add(caseDoc);
+  await recordCreated(userId, ref.id, input);
   await recordAudit(userId, "create", "case", ref.id);
   return toCase(await ref.get());
 }
@@ -53,6 +56,8 @@ export async function updateCase(userId: string, id: string, input: CaseInput) {
   // set (not update) replaces the whole document, so an old plain-text case loses its plain fields
   const caseDoc: CaseDoc = { caseNumber: old.caseNumber, data: encryptCase(input), createdAt: old.createdAt, updatedAt: nowIso() };
   await ref.set(caseDoc);
+  // The action history keeps which fields changed (see case.history)
+  await recordUpdated(userId, id, decryptCase(old), input);
   await recordAudit(userId, "update", "case", id);
   return toCase(await ref.get());
 }
@@ -61,6 +66,7 @@ export async function deleteCase(userId: string, id: string) {
   const ref = cases(userId).doc(id);
   dataOrNotFound(await ref.get(), "Case");
 
-  await ref.delete();
+  // Also deletes its action history
+  await db.recursiveDelete(ref);
   await recordAudit(userId, "delete", "case", id);
 }

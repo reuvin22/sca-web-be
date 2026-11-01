@@ -71,6 +71,9 @@ async function rotateFirestore() {
   // Answers from public form links: users/{id}/forms/{id}/responses/{id}
   const answers = (await db.collectionGroup("responses").get()).docs.filter((doc) => doc.ref.parent.parent?.parent.id === "forms");
   await rewrite(answers.map((doc) => ({ ref: doc.ref, data: doc.data() })), "form responses");
+  // Case action history: users/{id}/cases/{id}/history/{id}
+  const caseHistory = (await db.collectionGroup("history").get()).docs.filter((doc) => doc.ref.parent.parent?.parent.id === "cases");
+  await rewrite(caseHistory.map((doc) => ({ ref: doc.ref, data: doc.data() })), "case history");
   for (const name of TOP_COLLECTIONS) {
     const snapshot = await db.collection(name).get();
     // Sign-in codes last 10 minutes; they are simply removed (their hash used the old key)

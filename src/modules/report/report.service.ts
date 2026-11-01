@@ -61,6 +61,7 @@ export async function getDashboard(userId: string) {
       total: cases.length,
       forFollowUp: statusCount("today", "scheduled"),
       overdue: statusCount("overdue"),
+      scheduled: statusCount("scheduled"), // follow-up date still ahead
       closed: statusCount("accomplished"),
       thisMonth: cases.filter((item) => item.intakeDate.startsWith(today.slice(0, 7))).length,
       referrals: cases.filter(isReferred).length,

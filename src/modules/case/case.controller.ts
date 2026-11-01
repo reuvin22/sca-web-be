@@ -3,6 +3,7 @@ import { getUserId } from "../../middlewares/auth.middleware";
 import { sendSuccess } from "../../utils/apiResponse";
 import type { IdParams } from "../../utils/schema";
 import * as caseService from "./case.service";
+import { listHistory } from "./case.history";
 import type { CaseInput, CaseQuery } from "./case.types";
 
 export async function listCases(req: Request, res: Response) {
@@ -14,6 +15,11 @@ export async function listCases(req: Request, res: Response) {
 
 export async function getCase(req: Request<IdParams>, res: Response) {
   sendSuccess(res, await caseService.getCase(getUserId(req), req.params.id));
+}
+
+export async function getCaseHistory(req: Request<IdParams>, res: Response) {
+  await caseService.getCase(getUserId(req), req.params.id); // 404 when the case does not exist
+  sendSuccess(res, await listHistory(getUserId(req), req.params.id));
 }
 
 export async function createCase(req: Request<object, unknown, CaseInput>, res: Response) {
